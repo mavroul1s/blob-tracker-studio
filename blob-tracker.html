@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141615">
+  <meta name="description" content="Turn your videos into a live blob tracking effect. Adjust boxes, IDs, connections and trails, then export directly in your browser.">
+  <title>Blob Tracker — Video Studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23141615'/%3E%3Cpath d='M8 13V8h5m6 0h5v5m0 6v5h-5m-6 0H8v-5' fill='none' stroke='%23c5f56b' stroke-width='2'/%3E%3C/svg%3E">
+  <style>
+:root{color-scheme:dark;--bg:#141615;--panel:#1a1d1b;--edge:#303530;--muted:#919a91;--text:#f2f4ee;--accent:#c5f56b;--mono:"Cascadia Code","SFMono-Regular",Consolas,monospace;--sans:"Segoe UI",Arial,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px var(--sans);-webkit-font-smoothing:antialiased}button,a,input,select{touch-action:manipulation}button,input,select{font:inherit}button,a{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,.stage:focus-visible{outline:2px solid var(--accent);outline-offset:4px}button{transition:background .15s,color .15s,border-color .15s}button:active:not(:disabled){transform:translateY(1px)}[hidden]{display:none!important}
+.header{height:78px;border-bottom:1px solid var(--edge);padding:0 3.4%;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:14px;font:600 19px var(--mono);letter-spacing:-.7px}.brand-light{font-weight:400;color:#adb5ab}.version{font:11px var(--mono);color:#838d80;margin-left:7px}.brand-mark{display:inline-block;width:23px;height:23px;background:linear-gradient(var(--accent),var(--accent)) left top/8px 2px no-repeat,linear-gradient(var(--accent),var(--accent)) left top/2px 8px no-repeat,linear-gradient(var(--accent),var(--accent)) right top/8px 2px no-repeat,linear-gradient(var(--accent),var(--accent)) right top/2px 8px no-repeat,linear-gradient(var(--accent),var(--accent)) left bottom/8px 2px no-repeat,linear-gradient(var(--accent),var(--accent)) left bottom/2px 8px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/8px 2px no-repeat,linear-gradient(var(--accent),var(--accent)) right bottom/2px 8px no-repeat}.header-note{font:10px var(--mono);letter-spacing:1.3px;color:var(--muted);display:flex;align-items:center;gap:9px}.status-dot{display:inline-block;width:5px;height:5px;background:var(--accent);border-radius:50%;flex-shrink:0}.button{border:1px solid transparent;border-radius:4px;padding:12px 17px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:9px;white-space:nowrap;line-height:1.2}.button.primary{background:var(--accent);color:#18200d}.button.primary:hover{background:#d8ff8d}.button.secondary{background:#252a25;border-color:#3b4239;color:var(--text)}.button.secondary:hover{background:#30392d;border-color:#626e58}.button.quiet{background:none;color:#b4bdb0;font-weight:400}.button.quiet:hover{background:#252a25;color:var(--text)}.button.compact{padding:8px 11px;font-size:11px}.full{width:100%}.text-button{background:none;border:0;color:var(--muted);font:11px var(--mono);padding:5px}.text-button:hover{color:var(--accent)}
+main{max-width:1680px;margin:auto;padding:0 3.4%}.intro{display:flex;align-items:flex-end;justify-content:space-between;gap:25px;padding:36px 0 29px}.eyebrow{font:10px var(--mono);letter-spacing:2px;color:var(--accent);margin:0 0 10px}h1{font-size:43px;letter-spacing:-1.8px;line-height:1.1;font-weight:500;margin:0}.intro-copy{color:var(--muted);margin:11px 0 0;font-size:13px}.actions{display:flex;gap:10px;padding-bottom:2px}.studio{display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:24px;align-items:start}.workspace{min-width:0}.preview-toolbar{display:flex;justify-content:space-between;align-items:center;gap:15px;min-height:47px;border:1px solid var(--edge);border-bottom:0;padding:0 16px;border-radius:5px 5px 0 0;background:var(--panel)}.source-title{display:flex;align-items:center;gap:9px;min-width:0;font-size:11px;color:#bac3b5}.source-title #fileName{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:350px}.tag{border:1px solid #4b5542;color:#adbda0;font:8px var(--mono);padding:3px 5px;letter-spacing:1px}.view-switch{display:flex;gap:2px;flex-shrink:0}.view-switch button{background:none;color:var(--muted);border:0;border-radius:3px;font-size:10px;padding:6px 9px}.view-switch button:hover{color:var(--text)}.view-switch button.active{background:#323a2d;color:#d5e0cd}.stage{position:relative;background:#070a09;border:1px solid var(--edge);min-height:240px;display:flex;justify-content:center;align-items:center;overflow:hidden;aspect-ratio:16/9;max-height:72vh}.stage canvas{display:block;width:100%;height:100%;object-fit:contain}.canvas-top,.canvas-bottom{position:absolute;left:19px;right:19px;display:flex;justify-content:space-between;font:9px var(--mono);letter-spacing:1px;color:#a4ae9d;pointer-events:none;text-shadow:0 1px 3px #000}.canvas-top{top:18px}.canvas-bottom{bottom:17px}.canvas-top #liveStatus{display:flex;align-items:center;gap:7px}.canvas-bottom #frameNumber{margin-left:15px;color:#6d7b63}.drop-message{display:none;position:absolute;inset:0;background:#141e14e8;border:2px dashed var(--accent);align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:3}.drop-message span{font-size:26px;letter-spacing:-.5px}.drop-message small{color:#afc69a}.stage.dragover .drop-message{display:flex}.transport{height:57px;display:flex;align-items:center;gap:10px;padding:0 11px;border:1px solid var(--edge);border-top:0;background:var(--panel);border-radius:0 0 5px 5px}.icon-button{display:inline-grid;place-items:center;background:none;color:#d5ded0;border:0;min-width:30px;height:32px;font:18px var(--mono);border-radius:3px}.icon-button:hover{background:#30372c}.time{font:10px var(--mono);color:#b0baa9;white-space:nowrap}.transport input{flex:1;min-width:35px;margin:0 8px}.transport .compact{font-size:10px}.stats{display:flex;align-items:center;gap:20px;font:10px var(--mono);padding:16px 2px;color:var(--muted);letter-spacing:.1px}.stats>span:first-child{display:flex;align-items:center;gap:6px}.stats strong{font-weight:400;color:#c7d1bf}.stats #processingSize{font-size:9px}.privacy{margin-left:auto;font:11px var(--sans);color:#7d8976}.clip-strip{border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);padding:18px 0;display:flex;align-items:center;gap:13px}.clip-icon{width:41px;height:41px;display:grid;place-items:center;border:1px solid #3a4236;color:#9db08d;font:12px var(--mono);border-radius:3px}.clip-info{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0}.clip-info strong{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.clip-info span{font-size:11px;color:var(--muted)}.notice{font-size:12px;color:#b9cbad;line-height:1.6;min-height:19px;margin:13px 0}.notice.error{color:#ffac88}.export-panel,.download-panel{margin-top:17px;display:flex;gap:20px;align-items:center;border:1px solid #4c613a;border-radius:4px;background:#202a1b;padding:17px}.export-panel>div,.download-panel>div{display:flex;gap:5px;flex-direction:column;flex:1}.export-panel strong,.download-panel strong{font-size:12px}.export-panel span,.download-panel span{font-size:11px;color:#acb89e}.export-panel progress{width:100px;accent-color:var(--accent);height:5px}.footer{display:flex;justify-content:space-between;gap:15px;padding:35px 0 26px;margin-top:10px;color:#66735e;font:9px var(--mono);letter-spacing:1.1px}
+.settings{border:1px solid var(--edge);background:var(--panel);border-radius:5px;overflow:hidden}.settings-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px}.settings h2{font-size:13px;font-weight:500;margin:0}.preset-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin:0 18px 17px}.preset{border:1px solid #343c2f;background:none;border-radius:3px;padding:8px 3px;color:var(--muted);font-size:10px}.preset:hover{color:var(--text);border-color:#6d7c5e}.preset.active{border-color:#70894c;color:var(--accent);background:#303b23}.control-section{border-top:1px solid var(--edge);padding:18px}.control-section h3{margin:0 0 18px;font-size:11px;font-weight:500;display:flex;align-items:center;gap:9px}.control-section h3 span{font:9px var(--mono);color:#8ba273}.field-label,.range-label{display:flex;align-items:center;justify-content:space-between;color:#b7c1b0;font-size:11px}.field-label{margin:15px 0 8px}.range-label{margin:17px 0 11px}.range-label output{font:10px var(--mono);color:#91a67d}.control-section select{width:100%;background:#22271f;border:1px solid #3a4333;color:#d4decd;padding:9px 10px;border-radius:3px;font-size:11px;cursor:pointer}.hint{font-size:10px;color:#84917a;line-height:1.6;margin:9px 0 0}.control-section .full{margin-top:18px;color:#aebb9f;font-weight:400;font-size:10px}.toggle-row{position:relative;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#b7c1b0;margin:0 0 13px;cursor:pointer;min-height:20px}.toggle-row input{position:absolute;right:0;width:30px;height:18px;opacity:0;margin:0;cursor:pointer}.switch{width:29px;height:16px;border-radius:10px;background:#3b4336;position:relative;pointer-events:none}.switch:after{content:"";position:absolute;width:10px;height:10px;border-radius:50%;background:#87927f;left:3px;top:3px;transition:transform .15s,background .15s}.toggle-row input:checked+.switch{background:#627b3c}.toggle-row input:checked+.switch:after{background:var(--accent);transform:translateX(13px)}.toggle-row input:focus-visible+.switch{outline:2px solid var(--accent);outline-offset:4px}.control-section .toggle-row:last-child{margin-bottom:0}.control-section select+.toggle-row{margin-top:17px}.color-row{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#b7c1b0;margin:21px 0}.swatches{display:flex;align-items:center;gap:7px}.swatch{width:18px;height:18px;border:3px solid var(--panel);outline:1px solid transparent;border-radius:50%;background:var(--swatch);padding:0}.swatch.active{outline-color:#a8b198}.custom-color{display:flex;border-radius:3px;overflow:hidden;border:1px solid #5c6652;width:20px;height:18px}.custom-color input{width:34px;height:30px;padding:0;margin:-6px;border:0;background:none;cursor:pointer}input[type=range]{width:100%;height:3px;border-radius:2px;appearance:none;background:#394331;accent-color:var(--accent);display:block;cursor:pointer}input[type=range]::-webkit-slider-thumb{appearance:none;width:10px;height:10px;border-radius:50%;background:#c5f56b;border:0}input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#c5f56b;border:0}.settings-footer{display:flex;align-items:center;gap:13px;border-top:1px solid var(--edge);padding:22px 18px;font:10px/1.7 var(--sans);color:#7f8e74}.brand-mark.small{width:18px;height:18px;opacity:.6}dialog{background:#1c2119;color:var(--text);border:1px solid #526442;border-radius:6px;padding:28px;width:min(480px,92vw)}dialog::backdrop{background:#060a07bd;backdrop-filter:blur(3px)}.dialog-heading{display:flex;align-items:center;justify-content:space-between}.dialog-heading h2{font-size:23px;letter-spacing:-.7px;font-weight:500;margin:0}dialog ol{padding-left:18px;color:#adbba3;font-size:12px;line-height:1.75}dialog li{margin:14px 0;padding-left:5px}dialog li strong{color:#e1eadb}dialog p{font-size:11px;color:#8b9d7d;margin:21px 0}body.exporting .settings{pointer-events:none;opacity:.6}.stage:fullscreen{border:0;max-height:none;aspect-ratio:auto;background:#050806}.stage:fullscreen canvas{width:100vw;height:100vh}.stage:fullscreen .canvas-top,.stage:fullscreen .canvas-bottom{font-size:13px}
+@media(min-width:1500px){.studio{grid-template-columns:minmax(0,1fr) 310px;gap:30px}.intro{padding-top:45px;padding-bottom:34px}.stage{max-height:76vh}}@media(max-width:1000px){main{padding:0 24px}.header{padding:0 24px}.studio{grid-template-columns:minmax(0,1fr) 260px;gap:16px}.privacy{display:none}.stats{gap:14px}.source-title #fileName{max-width:200px}.view-switch button{font-size:9px;padding:6px}.clip-strip{flex-wrap:wrap}.clip-info{flex-basis:70%}.clip-strip #demoButton{margin-left:50px}.intro{padding-top:29px}h1{font-size:36px}.control-section{padding:16px}.settings-header{padding:16px}.preset-row{margin:0 16px 16px}}@media(max-width:760px){.header{height:65px;padding:0 18px}.header-note{display:none}.brand{font-size:16px;gap:10px}.header .quiet{font-size:11px;padding:8px}.brand-mark{width:21px;height:21px}main{padding:0 16px}.intro{padding:27px 0 23px;align-items:flex-start;flex-direction:column;gap:20px}.intro-copy{font-size:12px}.actions{width:100%}.actions .button{flex:1}.studio{grid-template-columns:1fr;gap:20px}.stage{min-height:180px;max-height:65vh}.preview-toolbar{padding:0 10px;gap:8px}.source-title #fileName{max-width:160px}.canvas-top,.canvas-bottom{font-size:7px;left:12px;right:12px}.canvas-top{top:13px}.canvas-bottom{bottom:12px}.time{font-size:9px}.transport{gap:5px;padding:0 7px}.transport #muteButton{display:none}.transport input{margin:0 5px}.stats{font-size:9px;padding:14px 0;gap:14px}.stats #processingSize{margin-left:auto;font-size:8px}.clip-strip{gap:10px;padding:15px 0}.clip-info{flex-basis:60%}.clip-info span{font-size:10px}.clip-strip #demoButton{margin-left:0}.clip-icon{width:35px;height:35px}.clip-strip #snapshotButton{margin-left:auto}.footer{font-size:8px;letter-spacing:.7px;padding-top:24px}.footer span:last-child{display:none}.settings{display:grid;grid-template-columns:1fr 1fr}.settings-header,.preset-row,.settings-footer{grid-column:1/-1}.preset-row{margin:0 18px 17px}.control-section{padding:18px}.control-section:nth-of-type(2){border-left:1px solid var(--edge)}.control-section:nth-of-type(3){grid-column:1/-1}.settings-footer{padding:16px 18px}.export-panel,.download-panel{padding:14px;gap:10px;flex-wrap:wrap}.export-panel progress{flex:1}.export-panel>div{flex-basis:100%}.download-panel>div{flex-basis:100%}.download-panel a{width:100%}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.source-video{position:fixed;left:-100px;top:-100px;width:1px;height:1px;opacity:.01;pointer-events:none}body.importing .settings{pointer-events:none;opacity:.6}#importProgress{accent-color:var(--accent)}
+
+</style>
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="#" aria-label="Blob Tracker home"><span class="brand-mark" aria-hidden="true"></span><span>BLOB<span class="brand-light">TRACKER</span><span class="version"> / 01</span></span></a>
+    <span class="header-note"><span class="status-dot"></span> LOCAL PROCESSING</span>
+    <button id="helpButton" class="button quiet">How it works <span aria-hidden="true">↗</span></button>
+  </header>
+  <main>
+    <div class="intro">
+      <div><p class="eyebrow">VIDEO → MOTION → DATA</p><h1>Motion, mapped.</h1><p class="intro-copy">Your footage. A new layer of information.</p></div>
+      <div class="actions"><button id="uploadButton" class="button secondary"><span aria-hidden="true">＋</span> Upload video</button><button id="exportButton" class="button primary"><span aria-hidden="true">↓</span> Export video</button></div>
+    </div>
+    <input type="file" id="fileInput" accept="video/*,.mp4,.mov,.webm,.m4v,.ogv" hidden>
+    <div class="studio">
+      <section class="workspace" aria-label="Video preview">
+        <div class="preview-toolbar"><div class="source-title"><span class="status-dot"></span><span id="fileName">Built-in motion study</span><span id="demoTag" class="tag">DEMO</span></div><div class="view-switch" aria-label="Preview mode"><button id="sourceView" aria-pressed="false">Original</button><button class="active" id="effectView" aria-pressed="true">Effect</button><button id="maskView" aria-pressed="false">Mask</button></div></div>
+        <div id="dropZone" class="stage" tabindex="0" aria-label="Video canvas. Drag a video here to load it.">
+          <canvas id="outputCanvas" width="1280" height="720" aria-label="Live blob tracking video preview"></canvas>
+          <div class="canvas-top"><span id="resolution">1280 × 720</span><span id="liveStatus"><span class="status-dot"></span> LIVE PREVIEW</span></div>
+          <div class="canvas-bottom"><span>BT / MOTION STUDY <span id="frameNumber">00000</span></span><span id="canvasBlobCount">06 OBJECTS</span></div>
+          <div class="drop-message"><span>Drop your video here</span><small>Release to replace the current clip</small></div>
+        </div>
+        <div class="transport"><button id="playButton" class="icon-button" aria-label="Pause" title="Play / pause (space)">Ⅱ</button><button id="restartButton" class="icon-button" aria-label="Restart" title="Restart">↺</button><span id="timeDisplay" class="time">00:00 / 00:12</span><input id="scrubber" type="range" min="0" max="12" step="0.01" value="0" aria-label="Video position"><button id="muteButton" class="button quiet compact" disabled>Sound off</button><button id="fullscreenButton" class="icon-button" title="Fullscreen" aria-label="Fullscreen">⛶</button></div>
+        <div id="importPanel" class="export-panel" hidden><div><strong id="importTitle">Opening your video…</strong><span>No video is sent to an external server.</span></div><progress id="importProgress" max="100"></progress><button id="cancelImport" class="button secondary compact">Cancel</button></div>
+        <div class="stats"><span><span class="status-dot"></span><strong id="blobCount">6</strong> blobs detected</span><span><strong id="fps">30</strong> FPS</span><span id="processingSize">384 PX ANALYSIS</span><span class="privacy">Your video stays on your device.</span></div>
+        <div class="clip-strip"><div class="clip-icon" aria-hidden="true">01</div><div class="clip-info"><strong id="clipTitle">Start with your own footage</strong><span id="clipSubtitle">Drop a video onto the preview, or use Upload video.</span></div><button id="demoButton" class="button quiet compact">Load demo ↗</button><button id="snapshotButton" class="button secondary compact">Save frame ↓</button></div>
+        <div id="exportPanel" class="export-panel" hidden><div><strong id="exportTitle">Rendering your video…</strong><span id="exportDetail">Keep this tab visible. Export runs at playback speed.</span></div><progress id="exportProgress" value="0" max="100"></progress><button id="cancelExport" class="button secondary compact">Cancel</button></div>
+        <div id="downloadPanel" class="download-panel" hidden><div><strong>Your video is ready.</strong><span id="downloadDetail"></span></div><a id="downloadLink" class="button primary compact" download>Download video ↓</a></div>
+        <p id="notice" class="notice" role="status" aria-live="polite"></p>
+      </section>
+      <aside class="settings" aria-label="Effect settings">
+        <div class="settings-header"><h2>Effect controls</h2><button id="resetButton" class="text-button">Reset ↺</button></div>
+        <div class="preset-row" aria-label="Effect presets"><button class="preset active" data-preset="classic" aria-pressed="true">Classic</button><button class="preset" data-preset="technical" aria-pressed="false">Technical</button><button class="preset" data-preset="trails" aria-pressed="false">Trails</button></div>
+        <section class="control-section"><h3><span>01</span> Detection</h3>
+          <label class="field-label" for="detectionMode">Track</label><select id="detectionMode"><option value="bright">Bright areas</option><option value="dark">Dark areas</option><option value="motion">Moving areas</option></select>
+          <p id="modeHint" class="hint">Best for light subjects on a dark background.</p>
+          <button id="autoTune" class="button secondary compact full">Auto tune detection ↗</button>
+          <label class="range-label" for="threshold">Threshold <output id="thresholdValue">150</output></label><input id="threshold" type="range" min="5" max="250" value="150">
+          <label class="range-label" for="minArea">Minimum blob size <output id="minAreaValue">80 px</output></label><input id="minArea" type="range" min="10" max="2000" step="10" value="80">
+          <label class="range-label" for="maxBlobs">Maximum blobs <output id="maxBlobsValue">20</output></label><input id="maxBlobs" type="range" min="1" max="60" value="20">
+          <label class="range-label" for="smoothing">Tracking smoothness <output id="smoothingValue">35%</output></label><input id="smoothing" type="range" min="0" max="85" value="35">
+          <button id="resetTracking" class="button secondary compact full">Reset tracking / background ↺</button>
+        </section>
+        <section class="control-section"><h3><span>02</span> Overlay</h3>
+          <label class="toggle-row">Bounding boxes<input id="boxes" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label>
+          <label class="toggle-row">Object IDs<input id="labels" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label>
+          <label class="toggle-row">Center points<input id="centers" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label>
+          <label class="toggle-row">Connecting lines<input id="connections" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label>
+          <label class="toggle-row">Motion trails<input id="trails" type="checkbox"><span class="switch" aria-hidden="true"></span></label>
+          <div class="color-row"><span>Line color</span><div class="swatches"><button class="swatch active" data-color="#c5f56b" style="--swatch:#c5f56b" aria-label="Lime lines" aria-pressed="true"></button><button class="swatch" data-color="#ffffff" style="--swatch:#ffffff" aria-label="White lines" aria-pressed="false"></button><button class="swatch" data-color="#ff8c55" style="--swatch:#ff8c55" aria-label="Orange lines" aria-pressed="false"></button><label class="custom-color" title="Custom color"><input type="color" id="color" value="#c5f56b" aria-label="Custom line color"></label></div></div>
+          <label class="range-label" for="lineWidth">Line weight <output id="lineWidthValue">1.5 px</output></label><input id="lineWidth" type="range" min="0.5" max="4" step="0.5" value="1.5">
+          <label class="range-label" for="sourceOpacity">Video visibility <output id="sourceOpacityValue">100%</output></label><input id="sourceOpacity" type="range" min="0" max="100" value="100">
+          <label class="toggle-row">Black & white video<input id="grayscale" type="checkbox"><span class="switch" aria-hidden="true"></span></label>
+        </section>
+        <section class="control-section"><h3><span>03</span> Output</h3><label class="field-label" for="quality">Detection detail</label><select id="quality"><option value="256">Fast · 256 px</option><option value="384" selected>Balanced · 384 px</option><option value="640">Fine · 640 px</option></select><label class="field-label" for="exportSize">Export resolution</label><select id="exportSize"><option value="720">720p · faster</option><option value="1080" selected>1080p</option><option value="source">Original · up to 4K</option></select><label class="toggle-row">Include original audio<input id="includeAudio" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label><p class="hint">MP4 when supported; otherwise WebM. Export takes the length of your clip.</p></section>
+        <div class="settings-footer"><span class="brand-mark small" aria-hidden="true"></span><span>Made for experiments.<br>Ready for your next edit.</span></div>
+      </aside>
+    </div>
+    <footer class="footer"><span>BLOB TRACKER STUDIO</span><span>UPLOAD. TUNE. EXPORT.</span><span>NO UPLOADS. NO WAITING ROOM.</span></footer>
+  </main>
+  <video id="sourceVideo" class="source-video" playsinline preload="auto" muted aria-hidden="true" tabindex="-1"></video>
+  <dialog id="helpDialog"><div class="dialog-heading"><h2>A quick field guide.</h2><button id="closeHelp" class="icon-button" aria-label="Close help">×</button></div><ol><li><strong>Load a clip.</strong> Drop your video onto the canvas. MP4 and WebM work well; other formats depend on your browser.</li><li><strong>Find your subjects.</strong> Bright areas works for light subjects; Dark areas for dark subjects. Moving areas compares against a slowly adapting background and works best with a fixed camera.</li><li><strong>Tune the threshold.</strong> Use Detection mask to see exactly what is detected. Raise Minimum blob size to remove noise.</li><li><strong>Make it yours.</strong> Change boxes, labels, links, trails and video visibility. IDs follow nearby blobs; they can change when objects merge or overlap.</li><li><strong>Export.</strong> Render from the beginning at playback speed. Keep the tab visible. Download the finished video, or save a single frame.</li></ol><p>Your video is read locally. Nothing is sent to a server.</p><button id="helpDone" class="button primary full">Got it</button></dialog>
+  <script id="conversionWorkerSource" type="text/plain">
+// Single-thread FFmpeg core runs off the UI thread. Only the engine is downloaded.
+// The selected File stays inside this worker's local filesystem.
+self.onmessage = async ({data:{file}}) => {
+  let core;
+  try {
+    const base = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+    importScripts(`${base}/ffmpeg-core.js`);
+    core = await self.createFFmpegCore({mainScriptUrlOrBlob:`${base}/ffmpeg-core.js#${btoa(JSON.stringify({wasmURL:`${base}/ffmpeg-core.wasm`}))}`});
+    let details = '';
+    core.setLogger(({message})=>{details=(details+'\n'+message).slice(-2000);});
+    core.setProgress(({progress})=>self.postMessage({type:'progress',message:'Converting your video in this browser…',progress:Math.min(99,Math.max(0,progress*100))}));
+    self.postMessage({type:'progress',message:'Decoding your original video…',progress:null});
+    core.FS.writeFile('input',new Uint8Array(await file.arrayBuffer()));
+    core.setTimeout(240000);
+    core.exec('-i','input','-map','0:v:0','-map','0:a:0?','-vf','scale=1920:1080:force_original_aspect_ratio=decrease:force_divisible_by=2',
+      '-c:v','libx264','-preset','ultrafast','-crf','23','-pix_fmt','yuv420p','-c:a','aac','-b:a','160k','-movflags','+faststart','output.mp4');
+    if(core.ret!==0) throw new Error(details.includes('matches no streams')?'This file has no video track.':'Could not decode this video. Try the local app or an H.264 MP4.');
+    const bytes = core.FS.readFile('output.mp4');
+    self.postMessage({type:'done',bytes},[bytes.buffer]);
+  } catch(error) { self.postMessage({type:'error',message:error.message || 'Video conversion failed.'}); }
+  finally { if(core) {try{core.FS.unlink('input');core.FS.unlink('output.mp4');}catch{} } }
+};
+
+</script>
+<script type="module">
+// Connected component detection at reduced resolution; coordinates are normalized.
+// Pixels are grouped by 8-connectivity, then matched between frames by predicted centers.
+class BlobTracker {
+  constructor() { this.reset(); }
+  reset() { this.tracks = []; this.nextId = 1; this.background = null; this.width = 0; this.height = 0; }
+  detect(rgba, width, height, options) {
+    const size = width * height;
+    if (this.width !== width || this.height !== height) {
+      this.reset(); this.width = width; this.height = height;
+      this.mask = new Uint8Array(size); this.work = new Uint8Array(size); this.queue = new Int32Array(size);
+    }
+    const mask = this.mask, threshold = options.threshold;
+    if (options.mode === 'motion' && !this.background) {
+      this.background = new Float32Array(size * 3);
+      for (let i = 0; i < size; i++) for (let k = 0; k < 3; k++) this.background[i * 3 + k] = rgba[i * 4 + k];
+    }
+    for (let i = 0; i < size; i++) {
+      const p = i * 4;
+      if (options.mode === 'motion') {
+        let diff = 0;
+        for (let k = 0; k < 3; k++) {
+          const b = i * 3 + k;
+          diff += Math.abs(rgba[p + k] - this.background[b]);
+          // Slow adaptation avoids turning a moving subject into a permanent trail.
+          if (options.advance) this.background[b] += (rgba[p + k] - this.background[b]) * 0.006;
+        }
+        mask[i] = diff / 3 > threshold ? 1 : 0;
+      } else {
+        const luminance = rgba[p] * 0.2126 + rgba[p + 1] * 0.7152 + rgba[p + 2] * 0.0722;
+        mask[i] = (options.mode === 'dark' ? luminance < threshold : luminance > threshold) ? 1 : 0;
+      }
+    }
+    // A one-pixel closing bridges small compression gaps without erasing fine blobs.
+    if (options.close !== false) {
+      this.work.fill(0);
+      for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+        const p = y * width + x;
+        this.work[p] = mask[p] | mask[p-1] | mask[p+1] | mask[p-width] | mask[p+width];
+      }
+      mask.fill(0);
+      for (let y = 1; y < height - 1; y++) for (let x = 1; x < width - 1; x++) {
+        const p = y * width + x, b = this.work;
+        mask[p] = b[p] & b[p-1] & b[p+1] & b[p-width] & b[p+width];
+      }
+    }
+    this.work.set(mask); // Preserve the mask for preview while visiting components.
+    const visited = this.work, blobs = [], queue = this.queue;
+    const minArea = options.minArea * (Math.max(width,height) / 384) ** 2;
+    for (let seed = 0; seed < size; seed++) {
+      if (!visited[seed]) continue;
+      let start = 0, end = 1, area = 0, sx = 0, sy = 0;
+      let minX = width, maxX = 0, minY = height, maxY = 0;
+      queue[0] = seed; visited[seed] = 0;
+      while (start < end) {
+        const p = queue[start++], x = p % width, y = (p / width) | 0;
+        area++; sx += x; sy += y;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          const n = ny * width + nx;
+          if (visited[n]) { visited[n] = 0; queue[end++] = n; }
+        }
+      }
+      if (area < minArea || area > size * 0.7) continue;
+      blobs.push({ x: (minX - 2) / width, y: (minY - 2) / height,
+        w: (maxX - minX + 5) / width, h: (maxY - minY + 5) / height,
+        cx: sx / area / width, cy: sy / area / height, area: area / size });
+    }
+    blobs.sort((a,b) => b.area - a.area);
+    return blobs.slice(0, options.maxBlobs);
+  }
+  update(blobs, smoothing = 0.35, advance = true) {
+    const pairs = [];
+    for (let t = 0; t < this.tracks.length; t++) {
+      const track = this.tracks[t];
+      for (let b = 0; b < blobs.length; b++) {
+        const blob = blobs[b];
+        const dist = Math.hypot(track.cx + track.vx - blob.cx, track.cy + track.vy - blob.cy);
+        const areaPenalty = Math.abs(Math.log(Math.max(blob.area,1e-7) / Math.max(track.area,1e-7))) * 0.02;
+        if (dist < 0.18) pairs.push({ t, b, score: dist + areaPenalty });
+      }
+    }
+    pairs.sort((a,b) => a.score - b.score);
+    const usedTracks = new Set(), usedBlobs = new Set();
+    for (const {t,b} of pairs) {
+      if (usedTracks.has(t) || usedBlobs.has(b)) continue;
+      const track = this.tracks[t], blob = blobs[b];
+      usedTracks.add(t); usedBlobs.add(b);
+      const k = 1 - smoothing, oldX = track.cx, oldY = track.cy;
+      for (const key of ['x','y','w','h','cx','cy']) track[key] += (blob[key] - track[key]) * k;
+      if (advance) {
+        track.vx = (track.cx - oldX) * 0.6 + track.vx * 0.4;
+        track.vy = (track.cy - oldY) * 0.6 + track.vy * 0.4;
+        track.history.push([track.cx,track.cy]);
+        if (track.history.length > 40) track.history.shift();
+      }
+      track.area = blob.area; track.missed = 0;
+    }
+    if (advance) this.tracks.forEach((track,t) => { if (!usedTracks.has(t)) track.missed++; });
+    for (let b = 0; b < blobs.length; b++) if (!usedBlobs.has(b)) {
+      this.tracks.push({ ...blobs[b], id: this.nextId++, vx: 0, vy: 0, missed: 0, history: [[blobs[b].cx,blobs[b].cy]] });
+    }
+    this.tracks = this.tracks.filter(track => track.missed < 9);
+    return this.tracks.filter(track => track.missed === 0).sort((a,b) => a.id - b.id);
+  }
+}
+
+// Pick a threshold from this frame rather than assuming all clips have demo contrast.
+function tuneDetection(rgba,width,height,minArea=80,maxBlobs=20) {
+  const histogram = new Uint32Array(256),size=width*height;
+  let sum=0;
+  for(let p=0;p<rgba.length;p+=4){const l=Math.round(rgba[p]*.2126+rgba[p+1]*.7152+rgba[p+2]*.0722);histogram[l]++;sum+=l;}
+  let lowSum=0,lowCount=0,bestVariance=-1,otsu=150;
+  for(let l=0;l<255;l++){
+    lowCount+=histogram[l];lowSum+=histogram[l]*l;
+    const highCount=size-lowCount;if(!lowCount||!highCount)continue;
+    const variance=lowCount*highCount*(lowSum/lowCount-(sum-lowSum)/highCount)**2;
+    if(variance>bestVariance){bestVariance=variance;otsu=l;}
+  }
+  const quantile=q=>{let n=0;for(let l=0;l<256;l++){n+=histogram[l];if(n>=size*q)return l;}return 255;};
+  let best={mode:'bright',threshold:150,count:0,score:-Infinity};
+  if(quantile(.99)-quantile(.01)<3 && bestVariance<=0)return best;
+  for(const mode of ['bright','dark']) {
+    const candidates=mode==='bright'?[otsu+1,quantile(.7),quantile(.88)]:[otsu+1,quantile(.3),quantile(.12)];
+    for(const candidate of new Set(candidates)) {
+      const threshold=Math.max(5,Math.min(250,candidate));
+      const detector=new BlobTracker();
+      const blobs=detector.detect(rgba,width,height,{mode,threshold,minArea,maxBlobs,advance:false});
+      const useful=blobs.filter(b=>b.area<.45 && b.w*b.h<.75);
+      const coverage=useful.reduce((n,b)=>n+b.area,0);
+      const score=useful.length?Math.min(useful.length,12)*2+Math.min(coverage,.3)*10-(blobs.length-useful.length)*3:-Infinity;
+      if(score>best.score)best={mode,threshold,count:useful.length,score};
+    }
+  }
+  return best;
+}
+
+function connectionEdges(tracks) {
+  const edges = [], keys = new Set();
+  tracks.forEach((track,i) => {
+    const nearest = tracks.map((other,j) => ({ j, d: Math.hypot(track.cx-other.cx,track.cy-other.cy) }))
+      .filter(n => n.j !== i && n.d < 0.65).sort((a,b) => a.d-b.d).slice(0,2);
+    for (const {j} of nearest) {
+      const key = [Math.min(i,j),Math.max(i,j)].join('-');
+      if (!keys.has(key)) { keys.add(key); edges.push([i,j]); }
+    }
+  });
+  return edges;
+}
+
+
+function validateVideoFrame(video) {
+  if (!video.videoWidth || !video.videoHeight) {
+    const error = new Error('This browser can read the audio but cannot decode the video codec.');
+    error.code = 'VIDEO_CODEC'; throw error;
+  }
+  if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error('This video has no readable duration.');
+  if (video.readyState < 2) throw new Error('The video frame is not decoded yet.');
+}
+
+// Only the loopback app sends a file to a local helper. Hosted and standalone copies use WebAssembly.
+// Neither path sends video content to an external service.
+async function convertVideo(file, { signal, onProgress = () => {} } = {}) {
+  const forceBrowser = new URLSearchParams(location.search).get('converter') === 'browser';
+  if (!forceBrowser && ['127.0.0.1','localhost','[::1]'].includes(location.hostname)) {
+    let capability;
+    try {
+      const response = await fetch('./api/capabilities', { signal });
+      if (response.ok && response.headers.get('content-type')?.includes('application/json')) capability = await response.json();
+    } catch (error) { if (signal?.aborted) throw error; }
+    if (capability?.convert) {
+      onProgress('Converting your video locally…', null);
+      const response = await fetch('./api/convert', { method:'POST', body:file, signal, headers:{'Content-Type':'application/octet-stream'} });
+      if (!response.ok) { const error = await response.json().catch(()=>({})); throw new Error(error.error || 'Local conversion failed.'); }
+      return response.blob();
+    }
+  }
+  if (file.size > 500 * 1024 * 1024) throw new Error('This file is too large for browser conversion. Use the local app or convert it to H.264 MP4 first.');
+  onProgress('Loading the browser video converter (31 MB)…', null);
+  return new Promise((resolve,reject) => {
+    const embeddedSource = document.getElementById('conversionWorkerSource')?.textContent;
+    const workerUrl = embeddedSource
+      ? URL.createObjectURL(new Blob([embeddedSource], {type:'text/javascript'}))
+      : new URL('./conversion-worker.js',import.meta.url);
+    let worker;
+    try { worker = new Worker(workerUrl); }
+    catch (error) { if (embeddedSource) URL.revokeObjectURL(workerUrl); reject(error); return; }
+    const timer = setTimeout(()=>finish(new Error('Conversion timed out. Try the local app for faster conversion.')),300000);
+    const abort = () => finish(new DOMException('Video loading cancelled.','AbortError'));
+    function finish(error, bytes) {
+      clearTimeout(timer);signal?.removeEventListener('abort',abort);worker.terminate();
+      if (embeddedSource) URL.revokeObjectURL(workerUrl);
+      error ? reject(error) : resolve(new Blob([bytes],{type:'video/mp4'}));
+    }
+    worker.onmessage = ({data}) => {
+      if(data.type==='progress') onProgress(data.message,data.progress);
+      if(data.type==='done') finish(null,data.bytes);
+      if(data.type==='error') finish(new Error(data.message));
+    };
+    worker.onerror = () => finish(new Error('The browser video converter could not start. Check your connection or use the local app.'));
+    if(signal?.aborted){abort();return;}
+    signal?.addEventListener('abort',abort,{once:true});
+    worker.postMessage({file});
+  });
+}
+
+
+
+const $ = id => document.getElementById(id);
+const canvas = $('outputCanvas'), ctx = canvas.getContext('2d');
+const video = $('sourceVideo');
+const sourceCanvas = document.createElement('canvas'), sourceCtx = sourceCanvas.getContext('2d');
+const analysis = document.createElement('canvas'), analysisCtx = analysis.getContext('2d', { willReadFrequently: true });
+const maskCanvas = document.createElement('canvas'), maskCtx = maskCanvas.getContext('2d');
+const tracker = new BlobTracker();
+const defaults = { detectionMode:'bright', threshold:150, minArea:80, maxBlobs:20, smoothing:35, boxes:true, labels:true,
+  centers:true, connections:true, trails:false, color:'#c5f56b', lineWidth:1.5, sourceOpacity:100, grayscale:false, quality:384, exportSize:'1080', includeAudio:true };
+const ranges = { threshold:'', minArea:' px', maxBlobs:'', smoothing:'%', lineWidth:' px', sourceOpacity:'%' };
+let settings = { ...defaults }, demo = true, playing = true, demoTime = 0, demoLast = performance.now();
+let sourceUrl = null, sourceName = 'motion-study', loaded = false, maskView = false, originalView = false, dirty = true, lastMediaTime = -1;
+let frame = 0, tracks = [], muted = true, fps = 30, framesSinceStats = 0, lastStats = performance.now();
+let recorder = null, recordingStream = null, exporting = false, cancelled = false, downloadUrl = null;
+let audioContext = null, audioSource = null, audioDestination = null, previewGain = null, pendingLoad = false;
+let exportPrevious = null, cancellationReason = '';
+let importController = null;
+
+function notice(message, error = false) { $('notice').textContent = message; $('notice').classList.toggle('error', error); }
+function formatTime(t) { if (!Number.isFinite(t)) t = 0; return `${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`; }
+function duration() { return demo ? 12 : (Number.isFinite(video.duration) ? video.duration : 0); }
+function mediaTime() { return demo ? demoTime : video.currentTime; }
+function dimensions() { return demo ? [1280,720] : [video.videoWidth,video.videoHeight]; }
+function resizeOutput() {
+  const [w,h] = dimensions();
+  if(!w || !h)return false;
+  const target = settings.exportSize === 'source' ? 2160 : Number(settings.exportSize);
+  const scale = Math.min(1,target / Math.min(w,h),3840/Math.max(w,h));
+  canvas.width = Math.max(2,Math.round(w*scale/2)*2); canvas.height = Math.max(2,Math.round(h*scale/2)*2);
+  sourceCanvas.width = demo ? w : 1; sourceCanvas.height = demo ? h : 1;
+  $('resolution').textContent = `${canvas.width} × ${canvas.height}`;
+  $('dropZone').style.aspectRatio = `${w}/${h}`;
+  dirty = true;
+}
+function resetTracker() { tracker.reset(); tracks = []; lastMediaTime = -1; dirty = true; frame = 0; }
+function syncControls() {
+  for (const [key,value] of Object.entries(settings)) {
+    if ($(key).type === 'checkbox') $(key).checked = value; else $(key).value = value;
+    if (ranges[key] !== undefined) $(`${key}Value`).textContent = `${value}${ranges[key]}`;
+  }
+  syncSwatches(); updateHint();
+  $('processingSize').textContent = `${settings.quality} PX ANALYSIS`;
+}
+function syncSwatches() { document.querySelectorAll('[data-color]').forEach(b=>{const active = b.dataset.color === settings.color.toLowerCase();b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);}); }
+function updateHint() {
+  $('modeHint').textContent = {bright:'Best for light subjects on a dark background.',dark:'Best for dark subjects on a light background.',motion:'Best with a fixed camera. Lower threshold detects subtler movement.'}[settings.detectionMode];
+}
+function clearPreset() { document.querySelectorAll('[data-preset]').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-pressed','false');}); }
+function setPreset(name) {
+  const styles = {
+    classic:{boxes:true,labels:true,centers:true,connections:true,trails:false,color:'#c5f56b',lineWidth:1.5,sourceOpacity:65,grayscale:true},
+    technical:{boxes:true,labels:true,centers:true,connections:true,trails:false,color:'#ffffff',lineWidth:1,sourceOpacity:80,grayscale:true},
+    trails:{boxes:true,labels:true,centers:true,connections:false,trails:true,color:'#c5f56b',lineWidth:1.5,sourceOpacity:35,grayscale:true}
+  };
+  Object.assign(settings,styles[name]);
+  clearPreset(); const b=document.querySelector(`[data-preset="${name}"]`);b.classList.add('active');b.setAttribute('aria-pressed','true');
+  syncControls(); dirty=true;
+}
+for (const key of Object.keys(defaults)) $(key).addEventListener('input', () => {
+  if (exporting) return;
+  const el=$(key); settings[key] = el.type==='checkbox' ? el.checked : (typeof defaults[key]==='number' ? Number(el.value) : el.value);
+  if (ranges[key]!==undefined) $(`${key}Value`).textContent = `${settings[key]}${ranges[key]}`;
+  if (['detectionMode','quality','threshold','minArea','maxBlobs'].includes(key)) resetTracker();
+  if (key==='detectionMode') { settings.threshold = settings.detectionMode==='motion' ? 25 : 150; syncControls(); }
+  if (key==='quality') $('processingSize').textContent=`${settings.quality} PX ANALYSIS`;
+  if (key==='exportSize') resizeOutput();
+  if (key==='color') syncSwatches();
+  clearPreset(); dirty=true;
+});
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>setPreset(b.dataset.preset)));
+document.querySelectorAll('[data-color]').forEach(b=>b.addEventListener('click',()=>{settings.color=b.dataset.color;$('color').value=settings.color;syncSwatches();clearPreset();dirty=true;}));
+$('resetButton').addEventListener('click',()=>{settings={...defaults};syncControls();setPreset('classic');resizeOutput();resetTracker();notice('Controls reset.');});
+$('resetTracking').addEventListener('click',()=>{resetTracker();notice('Tracking reset. The current frame is the new motion background.');});
+
+function drawDemo(time) {
+  const w=sourceCanvas.width,h=sourceCanvas.height;
+  sourceCtx.fillStyle='#0e1412'; sourceCtx.fillRect(0,0,w,h);
+  sourceCtx.strokeStyle='#1a241e'; sourceCtx.lineWidth=1;
+  for(let x=0;x<w;x+=64){sourceCtx.beginPath();sourceCtx.moveTo(x,0);sourceCtx.lineTo(x,h);sourceCtx.stroke();}
+  for(let y=0;y<h;y+=64){sourceCtx.beginPath();sourceCtx.moveTo(0,y);sourceCtx.lineTo(w,y);sourceCtx.stroke();}
+  for(let i=0;i<6;i++) {
+    const phase=i*1.13, cx=w*(0.18+(i%3)*0.30+Math.sin(time*0.55+phase)*0.065);
+    const cy=h*(0.30+Math.floor(i/3)*0.38+Math.cos(time*0.75+phase)*0.08);
+    const rx=w*(0.044+Math.sin(time*0.7+i)*0.012),ry=h*(0.065+Math.cos(time*0.6+i)*0.018);
+    sourceCtx.save();sourceCtx.translate(cx,cy);sourceCtx.rotate(Math.sin(time*.35+phase)*.35);
+    const g=sourceCtx.createRadialGradient(-rx*.2,-ry*.3,0,0,0,Math.max(rx,ry)*1.6);
+    g.addColorStop(0,'#e2e7d6');g.addColorStop(.65,'#afbca0');g.addColorStop(1,'#718865');
+    sourceCtx.fillStyle=g;sourceCtx.beginPath();
+    for(let a=0;a<=Math.PI*2+.1;a+=.06){const wobble=1+Math.sin(a*3+time*.4+phase)*.12+Math.cos(a*5-time*.3)*.04;const x=Math.cos(a)*rx*wobble,y=Math.sin(a)*ry*wobble;a===0?sourceCtx.moveTo(x,y):sourceCtx.lineTo(x,y);}
+    sourceCtx.closePath();sourceCtx.fill();sourceCtx.restore();
+  }
+}
+function drawOverlay() {
+  const w=canvas.width,h=canvas.height,scale=Math.max(.7,Math.min(w,h)/720),color=settings.color;
+  ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=settings.lineWidth*scale;
+  if(settings.connections) {
+    ctx.globalAlpha=.48;ctx.beginPath();
+    for(const [a,b] of connectionEdges(tracks)){ctx.moveTo(tracks[a].cx*w,tracks[a].cy*h);ctx.lineTo(tracks[b].cx*w,tracks[b].cy*h);}ctx.stroke();ctx.globalAlpha=1;
+  }
+  for(const t of tracks) {
+    const x=t.x*w,y=t.y*h,bw=t.w*w,bh=t.h*h,cx=t.cx*w,cy=t.cy*h;
+    if(settings.trails && t.history.length>1){for(let i=1;i<t.history.length;i++){ctx.globalAlpha=(i/t.history.length)*.65;ctx.beginPath();ctx.moveTo(t.history[i-1][0]*w,t.history[i-1][1]*h);ctx.lineTo(t.history[i][0]*w,t.history[i][1]*h);ctx.stroke();}ctx.globalAlpha=1;}
+    if(settings.boxes){ctx.globalAlpha=.85;ctx.strokeRect(x,y,bw,bh);ctx.globalAlpha=1;const c=Math.min(8*scale,bw*.2,bh*.2);ctx.lineWidth=(settings.lineWidth+.5)*scale;ctx.beginPath();ctx.moveTo(x,y+c);ctx.lineTo(x,y);ctx.lineTo(x+c,y);ctx.moveTo(x+bw-c,y+bh);ctx.lineTo(x+bw,y+bh);ctx.lineTo(x+bw,y+bh-c);ctx.stroke();ctx.lineWidth=settings.lineWidth*scale;}
+    if(settings.centers){const r=5*scale;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,1.7*scale,0,Math.PI*2);ctx.fill();}
+    if(settings.labels) {
+      const text=`ID ${String(t.id).padStart(3,'0')}`,fontSize=11*scale;
+      ctx.font=`${fontSize}px "Cascadia Code",Consolas,monospace`;
+      const tw=ctx.measureText(text).width+8*scale,lx=Math.max(2,Math.min(x,w-tw-2)),ly=Math.max(fontSize+7*scale,y-5*scale);
+      ctx.fillStyle='#091006';ctx.globalAlpha=.85;ctx.fillRect(lx,ly-fontSize-4*scale,tw,fontSize+7*scale);ctx.globalAlpha=1;ctx.fillStyle=color;ctx.fillText(text,lx+4*scale,ly);
+    }
+  }
+  ctx.restore();
+}
+function render(advance) {
+  if (!demo && (!loaded || video.readyState < 2 || !video.videoWidth || !video.videoHeight)) return false;
+  if(demo) drawDemo(demoTime);
+  const source = demo ? sourceCanvas : video;
+  const [w,h]=dimensions(),aw=Math.round(settings.quality),ah=Math.max(2,Math.round(aw*h/w));
+  // Portrait clips get the same pixel budget as landscape clips.
+  const finalW=w<h?Math.max(2,Math.round(settings.quality*w/h)):aw,finalH=w<h?aw:ah;
+  if(analysis.width!==finalW||analysis.height!==finalH){analysis.width=finalW;analysis.height=finalH;maskCanvas.width=finalW;maskCanvas.height=finalH;}
+  analysisCtx.clearRect(0,0,finalW,finalH);
+  analysisCtx.drawImage(source,0,0,finalW,finalH);
+  const pixels=analysisCtx.getImageData(0,0,finalW,finalH);
+  const blobs=tracker.detect(pixels.data,finalW,finalH,{mode:settings.detectionMode,threshold:settings.threshold,minArea:settings.minArea,maxBlobs:settings.maxBlobs,advance});
+  tracks=tracker.update(blobs,settings.smoothing/100,advance);
+  ctx.fillStyle='#050806';ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(originalView)ctx.drawImage(source,0,0,canvas.width,canvas.height);
+  else if(maskView){const maskImage=maskCtx.createImageData(finalW,finalH);for(let i=0;i<tracker.mask.length;i++){const v=tracker.mask[i]?230:7,p=i*4;maskImage.data[p]=v;maskImage.data[p+1]=v;maskImage.data[p+2]=v;maskImage.data[p+3]=255;}maskCtx.putImageData(maskImage,0,0);ctx.imageSmoothingEnabled=false;ctx.drawImage(maskCanvas,0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=true;}
+  else{ctx.save();ctx.filter=settings.grayscale?'grayscale(1)':'none';ctx.globalAlpha=settings.sourceOpacity/100;ctx.drawImage(source,0,0,canvas.width,canvas.height);ctx.restore();}
+  if(!originalView)drawOverlay();
+  if(advance)frame++;
+  $('frameNumber').textContent=String(frame).padStart(5,'0');$('canvasBlobCount').textContent=`${String(tracks.length).padStart(2,'0')} OBJECTS`;
+  framesSinceStats++;
+}
+function updatePlaybackUi() {
+  const active=demo?playing:!video.paused;
+  $('playButton').textContent=active?'Ⅱ':'▶';$('playButton').setAttribute('aria-label',active?'Pause':'Play');
+  $('timeDisplay').textContent=`${formatTime(mediaTime())} / ${formatTime(duration())}`;
+  $('scrubber').max=duration();$('scrubber').value=mediaTime();
+  $('liveStatus').innerHTML=`<span class="status-dot"></span> ${pendingLoad?'OPENING VIDEO':exporting?'RENDERING':active?'LIVE PREVIEW':'PAUSED'}`;
+}
+function loop(now) {
+  const dt=Math.min((now-demoLast)/1000,.1);demoLast=now;
+  if(demo && playing){demoTime+=dt;if(demoTime>=12){if(exporting){demoTime=12;render(true);stopExport();}else{demoTime%=12;resetTracker();}}}
+  const t=mediaTime();
+  if((demo || loaded) && (dirty || t!==lastMediaTime)) {
+    const advance=t!==lastMediaTime;if(render(advance)!==false){lastMediaTime=t;dirty=false;}
+  }
+  if(now-lastStats>450){fps=Math.round(framesSinceStats*1000/(now-lastStats));$('fps').textContent=(demo?playing:!video.paused)?Math.min(fps,60):'—';$('blobCount').textContent=tracks.length;lastStats=now;framesSinceStats=0;}
+  updatePlaybackUi();
+  if(exporting){const percentage=duration()?Math.min(100,t/duration()*100):0;$('exportProgress').value=percentage;$('exportTitle').textContent=`Rendering your video… ${Math.floor(percentage)}%`;}
+  requestAnimationFrame(loop);
+}
+async function togglePlay() {
+  if(exporting)return;
+  if(demo){playing=!playing;demoLast=performance.now();}
+  else if(loaded){if(video.paused){if(video.currentTime>=duration()-.05){video.currentTime=0;resetTracker();}try{await video.play();}catch{notice('Playback was blocked. Press Play again.',true);}}else video.pause();}
+}
+function seek(time) {
+  if(exporting)return;
+  resetTracker();
+  if(demo)demoTime=time;else if(loaded)video.currentTime=time;
+  dirty=true;
+}
+$('playButton').addEventListener('click',togglePlay);$('restartButton').addEventListener('click',()=>seek(0));
+$('scrubber').addEventListener('input',()=>seek(Number($('scrubber').value)));
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','SELECT','BUTTON','A'].includes(document.activeElement.tagName)&&!$('helpDialog').open){e.preventDefault();togglePlay();}});
+$('muteButton').addEventListener('click',async()=>{muted=!muted;if(audioContext){await audioContext.resume();previewGain.gain.value=muted?0:1;video.muted=false;}else video.muted=muted;$('muteButton').textContent=muted?'Sound off':'Sound on';});
+$('fullscreenButton').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('dropZone').requestFullscreen();}catch{notice('Fullscreen is unavailable in this browser.');}});
+function setView(mask){originalView=false;maskView=mask;$('sourceView').classList.remove('active');$('sourceView').setAttribute('aria-pressed','false');$('effectView').classList.toggle('active',!mask);$('maskView').classList.toggle('active',mask);$('effectView').setAttribute('aria-pressed',!mask);$('maskView').setAttribute('aria-pressed',mask);dirty=true;}
+function showOriginal(){setView(false);originalView=true;$('sourceView').classList.add('active');$('sourceView').setAttribute('aria-pressed','true');$('effectView').classList.remove('active');$('effectView').setAttribute('aria-pressed','false');dirty=true;}
+$('sourceView').addEventListener('click',()=>{if(!exporting)showOriginal();});
+$('effectView').addEventListener('click',()=>{if(!exporting)setView(false);});$('maskView').addEventListener('click',()=>{if(!exporting)setView(true);});
+
+function setLoadingUi(active){
+  document.body.classList.toggle('importing',active);$('importPanel').hidden=!active;
+  for(const id of ['uploadButton','exportButton','demoButton','playButton','restartButton','scrubber','snapshotButton','resetButton','autoTune'])$(id).disabled=active||(!demo&&!loaded&&['exportButton','playButton','restartButton','scrubber','snapshotButton','autoTune'].includes(id));
+}
+function loadMedia(blob,signal){
+  if(sourceUrl)URL.revokeObjectURL(sourceUrl);
+  sourceUrl=URL.createObjectURL(blob);video.src=sourceUrl;video.muted=true;video.loop=true;video.playbackRate=1;
+  return new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>finish(new Error('Opening this video timed out.')),15000);
+    const ok=()=>{try{validateVideoFrame(video);finish();}catch(error){finish(error);}};
+    const bad=()=>finish(new Error('This browser cannot decode this video.'));
+    const aborted=()=>finish(new DOMException('Video loading cancelled.','AbortError'));
+    function finish(error){clearTimeout(timer);video.removeEventListener('loadeddata',ok);video.removeEventListener('error',bad);signal?.removeEventListener('abort',aborted);error?reject(error):resolve();}
+    video.addEventListener('loadeddata',ok,{once:true});video.addEventListener('error',bad,{once:true});signal?.addEventListener('abort',aborted,{once:true});
+    if(signal?.aborted){aborted();return;}video.load();
+  });
+}
+function autoTune(showNotice=true){
+  if(!demo&&!loaded)return;
+  const source=demo?sourceCanvas:video,[w,h]=dimensions();
+  const sw=Math.round(384*w/Math.max(w,h)),sh=Math.round(384*h/Math.max(w,h));
+  const sample=document.createElement('canvas');sample.width=sw;sample.height=sh;
+  const sampleCtx=sample.getContext('2d',{willReadFrequently:true});sampleCtx.drawImage(source,0,0,sw,sh);
+  const result=tuneDetection(sampleCtx.getImageData(0,0,sw,sh).data,sw,sh,settings.minArea,settings.maxBlobs);
+  if(result.count){settings.detectionMode=result.mode;settings.threshold=result.threshold;syncControls();resetTracker();if(showNotice)notice(`Detection tuned to this video. ${result.mode==='bright'?'Bright':'Dark'} areas · threshold ${result.threshold}.`);}
+  else if(showNotice)notice('No clear blobs in this frame. Try Moving areas, or lower Minimum blob size.',true);
+}
+$('autoTune').addEventListener('click',()=>autoTune());
+$('cancelImport').addEventListener('click',()=>importController?.abort());
+async function loadFile(file) {
+  if(!file || exporting || pendingLoad)return;
+  if(!file.type.startsWith('video/')&&!/\.(mp4|mov|webm|m4v|ogv|avi|mkv)$/i.test(file.name)){notice('Choose a video file, such as MP4 or WebM.',true);return;}
+  pendingLoad=true;notice('');importController=new AbortController();const {signal}=importController;
+  video.pause();playing=false;demo=false;loaded=false;resetTracker();hideDownload();
+  analysisCtx.clearRect(0,0,analysis.width,analysis.height);ctx.clearRect(0,0,canvas.width,canvas.height);
+  $('fileName').textContent=file.name;$('demoTag').hidden=true;$('clipTitle').textContent=file.name;$('clipSubtitle').textContent='Checking video playback…';
+  $('frameNumber').textContent='00000';$('resolution').textContent='DECODING VIDEO';
+  $('blobCount').textContent='0';$('canvasBlobCount').textContent='00 OBJECTS';setLoadingUi(true);
+  $('importTitle').textContent='Opening your video…';$('importProgress').removeAttribute('value');
+  let converted=false;
+  try {
+    try{await loadMedia(file,signal);}catch(error){
+      if(signal.aborted)throw error;
+      video.pause();
+      const playable=await convertVideo(file,{signal,onProgress:(message,progress)=>{$('importTitle').textContent=message;if(progress===null)$('importProgress').removeAttribute('value');else $('importProgress').value=progress;}});
+      await loadMedia(playable,signal);converted=true;
+    }
+    demo=false;loaded=true;sourceName=file.name.replace(/\.[^.]+$/,'');
+    $('fileName').textContent=file.name;$('demoTag').hidden=true;$('clipTitle').textContent=file.name;
+    $('clipSubtitle').textContent=`${video.videoWidth} × ${video.videoHeight} · ${formatTime(video.duration)} · ${(file.size/1024/1024).toFixed(1)} MB${converted?' · converted locally':''}`;
+    $('muteButton').disabled=false;resizeOutput();resetTracker();hideDownload();
+    settings.sourceOpacity=100;settings.grayscale=false;syncControls();setView(false);autoTune(false);render(true);
+    video.muted=audioContext?false:muted;if(previewGain)previewGain.gain.value=muted?0:1;
+    try{await video.play();notice(converted?'Your MOV was converted locally. The original footage and tracking effect are ready.':'Video ready. Detection is tuned to your footage.');}catch{notice('Video ready. Press Play to start.');}
+  } catch(e){video.pause();loaded=false;tracks=[];ctx.clearRect(0,0,canvas.width,canvas.height);$('clipSubtitle').textContent='No decoded video frames — export disabled.';notice(signal.aborted?'Video loading cancelled.':e.message,true);}
+  finally{pendingLoad=false;importController=null;setLoadingUi(false);$('fileInput').value='';}
+}
+$('uploadButton').addEventListener('click',()=>{if(!exporting)$('fileInput').click();});$('fileInput').addEventListener('change',e=>loadFile(e.target.files[0]));
+let dragDepth=0;
+document.addEventListener('dragover',e=>e.preventDefault());document.addEventListener('drop',e=>e.preventDefault());
+$('dropZone').addEventListener('dragenter',e=>{e.preventDefault();if(!exporting){dragDepth++;$('dropZone').classList.add('dragover');}});
+$('dropZone').addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;$('dropZone').classList.remove('dragover');}});
+$('dropZone').addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('dropZone').classList.remove('dragover');loadFile(e.dataTransfer.files[0]);});
+function loadDemo(showNotice=true) {
+  if(exporting)return;video.pause();if(sourceUrl){URL.revokeObjectURL(sourceUrl);sourceUrl=null;}video.removeAttribute('src');video.load();
+  demo=true;loaded=false;playing=true;demoTime=0;demoLast=performance.now();sourceName='motion-study';
+  setLoadingUi(false);
+  $('fileName').textContent='Built-in motion study';$('demoTag').hidden=false;$('clipTitle').textContent='Start with your own footage';$('clipSubtitle').textContent='Drop a video onto the preview, or use Upload video.';$('muteButton').disabled=true;
+  resizeOutput();resetTracker();hideDownload();if(showNotice)notice('Demo loaded. Upload your own video whenever you’re ready.');
+}
+$('demoButton').addEventListener('click',()=>loadDemo());
+video.addEventListener('seeked',()=>{dirty=true;});video.addEventListener('ended',()=>{if(exporting){dirty=true;render(true);stopExport();}});
+video.addEventListener('error',()=>{if(exporting){cancelled=true;cancellationReason='The video could not be read during export.';stopExport();}});
+video.addEventListener('timeupdate',()=>{if(!exporting&&video.loop&&video.currentTime<lastMediaTime-.2)resetTracker();});
+
+function saveBlob(blob,name) { const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000); }
+$('snapshotButton').addEventListener('click',()=>canvas.toBlob(blob=>{if(blob){saveBlob(blob,`${sourceName}-blob-tracker.png`);notice('Frame saved as PNG.');}},'image/png'));
+function hideDownload(){if(downloadUrl){URL.revokeObjectURL(downloadUrl);downloadUrl=null;}$('downloadPanel').hidden=true;}
+function setExportUi(active) {
+  exporting=active;document.body.classList.toggle('exporting',active);$('exportPanel').hidden=!active;
+  for(const id of ['uploadButton','exportButton','demoButton','playButton','restartButton','scrubber','resetButton','snapshotButton','muteButton','effectView','maskView','sourceView','autoTune'])$(id).disabled=active||(id==='muteButton'&&demo);
+}
+function onceSeek(target) {
+  if(Math.abs(video.currentTime-target)<.001)return Promise.resolve();
+  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{video.removeEventListener('seeked',done);reject(new Error('Could not seek to the start of the video.'));},7000);function done(){clearTimeout(timer);resolve();}video.addEventListener('seeked',done,{once:true});video.currentTime=target;});
+}
+async function prepareAudio() {
+  if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw new Error('Audio export is unavailable. Turn off Include original audio and try again.');audioContext=new Audio();audioSource=audioContext.createMediaElementSource(video);audioDestination=audioContext.createMediaStreamDestination();previewGain=audioContext.createGain();audioSource.connect(audioDestination);audioSource.connect(previewGain);previewGain.connect(audioContext.destination);}
+  await audioContext.resume();previewGain.gain.value=0;video.muted=false;
+  return audioDestination.stream.getAudioTracks();
+}
+async function startExport() {
+  if(exporting||pendingLoad)return;
+  if(!window.MediaRecorder||!canvas.captureStream){notice('Video export is unavailable in this browser. Open the app in Chrome or Edge, or use Save frame.',true);return;}
+  if(!demo){try{validateVideoFrame(video);}catch(error){notice(error.message+' Load a supported video before exporting.',true);return;}}
+  exportPrevious={time:mediaTime(),playing:demo?playing:!video.paused,mask:maskView,original:originalView};
+  cancelled=false;cancellationReason='';hideDownload();notice('');setExportUi(true);setView(false);$('exportProgress').value=0;
+  try {
+    if(demo){playing=false;demoTime=0;}else{video.pause();video.loop=false;video.playbackRate=1;await onceSeek(0);}
+    if(cancelled)throw new Error('Export cancelled.');
+    resetTracker();if(render(true)===false)throw new Error('No decoded video frame is available. Export stopped.');
+    recordingStream=canvas.captureStream(30);
+    if(!demo&&settings.includeAudio)for(const track of await prepareAudio())recordingStream.addTrack(track.clone());
+    if(cancelled)throw new Error('Export cancelled.');
+    const codecs=['video/mp4;codecs=avc1.42001E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+    const mimeType=codecs.find(type=>MediaRecorder.isTypeSupported(type));
+    if(!mimeType)throw new Error('This browser has no supported video encoder. Try Chrome or Edge.');
+    recorder=new MediaRecorder(recordingStream,{mimeType,videoBitsPerSecond:Math.max(4000000,canvas.width*canvas.height*5)});
+    const chunks=[];recorder.addEventListener('dataavailable',e=>{if(e.data.size)chunks.push(e.data);});
+    recorder.addEventListener('error',()=>{cancelled=true;cancellationReason='The browser encoder failed. Try 720p and export again.';stopExport();});
+    recorder.addEventListener('stop',()=>{
+      const actualType=recorder.mimeType, blob=new Blob(chunks,{type:actualType});
+      recordingStream?.getTracks().forEach(t=>t.stop());recordingStream=null;recorder=null;
+      setExportUi(false);restorePlayback();
+      if(!cancelled&&blob.size){const ext=actualType.includes('mp4')?'mp4':'webm';downloadUrl=URL.createObjectURL(blob);$('downloadLink').href=downloadUrl;$('downloadLink').download=`${sourceName}-blob-tracker.${ext}`;$('downloadDetail').textContent=`${ext.toUpperCase()} · ${(blob.size/1024/1024).toFixed(1)} MB · ${canvas.width} × ${canvas.height}`;$('downloadPanel').hidden=false;notice('Export complete. Your download is ready.');}else if(cancelled)notice(cancellationReason||'Export cancelled.',Boolean(cancellationReason));
+    },{once:true});
+    recorder.start(1000);
+    if(demo){demoTime=0;playing=true;demoLast=performance.now();}else await video.play();
+  } catch(e) {
+    if(!cancelled)cancellationReason=e.message||'Could not export the video. Try 720p.';
+    cancelled=true;
+    if(recorder&&recorder.state!=='inactive')recorder.stop();else{recordingStream?.getTracks().forEach(t=>t.stop());recordingStream=null;recorder=null;setExportUi(false);restorePlayback();}
+    notice(cancellationReason||'Export cancelled.',Boolean(cancellationReason));
+  }
+}
+function restorePlayback() {
+  if(previewGain)previewGain.gain.value=muted?0:1;
+  if(exportPrevious){setView(exportPrevious.mask);if(exportPrevious.original)showOriginal();if(demo){demoTime=exportPrevious.time;playing=exportPrevious.playing;demoLast=performance.now();}else{video.loop=true;video.currentTime=exportPrevious.time;if(exportPrevious.playing)video.play().catch(()=>{});else video.pause();}}
+  resetTracker();dirty=true;
+}
+function stopExport() {if(!exporting)return;if(demo)playing=false;else video.pause();if(recorder&&recorder.state!=='inactive')recorder.stop();}
+$('exportButton').addEventListener('click',startExport);$('cancelExport').addEventListener('click',()=>{cancelled=true;stopExport();});
+document.addEventListener('visibilitychange',()=>{if(exporting&&document.hidden){cancelled=true;cancellationReason='Export stopped because the tab was hidden. Keep the app visible while rendering.';stopExport();}});
+$('helpButton').addEventListener('click',()=>$('helpDialog').showModal());$('closeHelp').addEventListener('click',()=>$('helpDialog').close());$('helpDone').addEventListener('click',()=>$('helpDialog').close());
+$('helpDialog').addEventListener('click',e=>{if(e.target===$('helpDialog')){const r=$('helpDialog').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('helpDialog').close();}});
+window.addEventListener('beforeunload',()=>{if(sourceUrl)URL.revokeObjectURL(sourceUrl);if(downloadUrl)URL.revokeObjectURL(downloadUrl);});
+syncControls();resizeOutput();requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

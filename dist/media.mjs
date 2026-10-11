@@ -7,7 +7,7 @@ export function validateVideoFrame(video) {
   if (video.readyState < 2) throw new Error('The video frame is not decoded yet.');
 }
 
-// Only the loopback app sends a file to a local helper. Hosted copies use WebAssembly.
+// Only the loopback app sends a file to a local helper. Hosted and standalone copies use WebAssembly.
 // Neither path sends video content to an external service.
 export async function convertVideo(file, { signal, onProgress = () => {} } = {}) {
   const forceBrowser = new URLSearchParams(location.search).get('converter') === 'browser';
@@ -27,11 +27,18 @@ export async function convertVideo(file, { signal, onProgress = () => {} } = {})
   if (file.size > 500 * 1024 * 1024) throw new Error('This file is too large for browser conversion. Use the local app or convert it to H.264 MP4 first.');
   onProgress('Loading the browser video converter (31 MB)…', null);
   return new Promise((resolve,reject) => {
-    const worker = new Worker(new URL('./conversion-worker.js',import.meta.url));
+    const embeddedSource = document.getElementById('conversionWorkerSource')?.textContent;
+    const workerUrl = embeddedSource
+      ? URL.createObjectURL(new Blob([embeddedSource], {type:'text/javascript'}))
+      : new URL('./conversion-worker.js',import.meta.url);
+    let worker;
+    try { worker = new Worker(workerUrl); }
+    catch (error) { if (embeddedSource) URL.revokeObjectURL(workerUrl); reject(error); return; }
     const timer = setTimeout(()=>finish(new Error('Conversion timed out. Try the local app for faster conversion.')),300000);
     const abort = () => finish(new DOMException('Video loading cancelled.','AbortError'));
     function finish(error, bytes) {
       clearTimeout(timer);signal?.removeEventListener('abort',abort);worker.terminate();
+      if (embeddedSource) URL.revokeObjectURL(workerUrl);
       error ? reject(error) : resolve(new Blob([bytes],{type:'video/mp4'}));
     }
     worker.onmessage = ({data}) => {

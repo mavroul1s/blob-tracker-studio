@@ -8,7 +8,11 @@ The preview above uses real uploaded footage processed in the browser.
 
 ## Run locally
 
-From this directory, run `node server.mjs`, then open http://127.0.0.1:5173. No dependencies or API keys are needed.
+Download [blob-tracker.html](blob-tracker.html) and double-click it to open in Chrome or Edge. Everything needed for the interface, tracker, and export is included in this one file. No Node.js, installation, API key, or server is required.
+
+Compatible videos work offline. Unsupported codecs such as Motion JPEG MOV need an internet connection to download the browser conversion engine (31 MB). Conversion still runs on your device; your video is never sent to an external service.
+
+Developers can optionally run `node server.mjs` and open http://127.0.0.1:5173 for faster native conversion. Rebuild the standalone file after editing `dist/` with `npm run build:standalone`; the generated HTML is committed so users do not need a build step.
 
 ## Use
 
@@ -17,7 +21,7 @@ From this directory, run `node server.mjs`, then open http://127.0.0.1:5173. No 
 3. Open Detection mask and tune Threshold / Minimum blob size.
 4. Adjust the overlay, then export video or save a PNG frame.
 
-Processing stays on the device. Unsupported codecs (including Motion JPEG MOV) are converted automatically to H.264 / AAC MP4. The local server uses FFmpeg when installed; hosted copies use a single-thread WebAssembly worker, downloading a 31 MB engine on first use. Video content is never uploaded to an external service. Browser conversion supports files up to 500 MB; the local helper up to 1 GB. Conversion preserves the aspect ratio and prepares footage at up to 1080p. Compatible source clips do not need conversion.
+Processing stays on the device. Unsupported codecs (including Motion JPEG MOV) are converted automatically to H.264 / AAC MP4. The optional local server uses FFmpeg when installed; standalone and hosted copies use a single-thread WebAssembly worker. Browser conversion supports files up to 500 MB; the local helper up to 1 GB. Conversion preserves the aspect ratio and prepares footage at up to 1080p. Compatible source clips do not need conversion.
 
 For native local conversion, install `imageio-ffmpeg` into `.local-tools/python` with `python -m pip install --target .local-tools/python imageio-ffmpeg`. The bundled Windows executable is discovered automatically. The original video is untouched and temporary conversion files are removed after the response. `BLOB_TRACKER_FFMPEG` can point to another installed FFmpeg executable.
 
