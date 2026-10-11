@@ -1,5 +1,9 @@
 # Blob Tracker Studio
 
+**[Open the app →](https://mavroul1s.github.io/blob-tracker-studio/)**
+
+Start using it directly in your browser. No download, installation, or Node.js required.
+
 A browser tool for a TouchDesigner-style blob tracking overlay. Drop in a video, tune detection, and export boxes, persistent IDs, center points, connections and trails.
 
 ![Blob Tracker Studio showing uploaded sea footage with tracking boxes, IDs, and connecting lines](docs/images/blob-tracker-preview.jpg)
