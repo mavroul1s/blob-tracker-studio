@@ -17,7 +17,7 @@ if (!template.includes(stylesheetTag) || !template.includes(appTag)) {
 }
 const html = template
   .replace(stylesheetTag, () => `<style>\n${css}\n</style>`)
-  .replace('href="./" aria-label="Blob Tracker home"', 'href="#" aria-label="Blob Tracker home"')
+  .replace('href="./" aria-label="Tracefield home"', 'href="#" aria-label="Tracefield home"')
   .replace(appTag, () => `<script id="conversionWorkerSource" type="text/plain">\n${safeScript(worker)}\n</script>\n<script type="module">\n${safeScript(script)}\n</script>`);
 await writeFile(new URL('./blob-tracker.html', import.meta.url), html);
 console.log(`Built blob-tracker.html (${(Buffer.byteLength(html)/1024).toFixed(1)} KB). Open it directly in Chrome or Edge.`);

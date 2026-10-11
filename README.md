@@ -1,4 +1,4 @@
-# Blob Tracker Studio
+# Tracefield
 
 **[Open the app →](https://mavroul1s.github.io/blob-tracker-studio/)**
 
@@ -6,9 +6,9 @@ Start using it directly in your browser. No download, installation, or Node.js r
 
 A browser tool for a TouchDesigner-style blob tracking overlay. Drop in a video, tune detection, and export boxes, persistent IDs, center points, connections and trails.
 
-![Blob Tracker Studio showing uploaded sea footage with tracking boxes, IDs, and connecting lines](docs/images/blob-tracker-preview.jpg)
+![Tracefield showing independent colors for tracking boxes, connections, points, and IDs](docs/images/blob-tracker-preview.jpg)
 
-The preview above uses real uploaded footage processed in the browser.
+Boxes, connections, and points / IDs can use their own colors. Enable **Separate colors** in Overlay, then use each color picker or enter a hex color. Turn it off to use one shared line color. Motion trails follow the point color.
 
 ## Run locally
 
@@ -23,7 +23,7 @@ Developers can optionally run `node server.mjs` and open http://127.0.0.1:5173 f
 1. Upload or drag in your video. Unsupported codecs are converted automatically.
 2. Select Bright areas, Dark areas, or Moving areas. Motion detection works best with a static camera.
 3. Open Detection mask and tune Threshold / Minimum blob size.
-4. Adjust the overlay, then export video or save a PNG frame.
+4. Adjust the overlay and colors, then export video or save a PNG frame.
 
 Processing stays on the device. Unsupported codecs (including Motion JPEG MOV) are converted automatically to H.264 / AAC MP4. The optional local server uses FFmpeg when installed; standalone and hosted copies use a single-thread WebAssembly worker. Browser conversion supports files up to 500 MB; the local helper up to 1 GB. Conversion preserves the aspect ratio and prepares footage at up to 1080p. Compatible source clips do not need conversion.
 

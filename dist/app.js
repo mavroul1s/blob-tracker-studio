@@ -9,7 +9,9 @@ const analysis = document.createElement('canvas'), analysisCtx = analysis.getCon
 const maskCanvas = document.createElement('canvas'), maskCtx = maskCanvas.getContext('2d');
 const tracker = new BlobTracker();
 const defaults = { detectionMode:'bright', threshold:150, minArea:80, maxBlobs:20, smoothing:35, boxes:true, labels:true,
-  centers:true, connections:true, trails:false, color:'#c5f56b', lineWidth:1.5, sourceOpacity:100, grayscale:false, quality:384, exportSize:'1080', includeAudio:true };
+  centers:true, connections:true, trails:false, color:'#c5f56b', separateColors:false, boxColor:'#c5f56b', connectionColor:'#77c9ff', pointColor:'#ffb86b',
+  lineWidth:1.5, sourceOpacity:100, grayscale:false, quality:384, exportSize:'1080', includeAudio:true };
+const overlayColorKeys = ['boxColor','connectionColor','pointColor'];
 const ranges = { threshold:'', minArea:' px', maxBlobs:'', smoothing:'%', lineWidth:' px', sourceOpacity:'%' };
 let settings = { ...defaults }, demo = true, playing = true, demoTime = 0, demoLast = performance.now();
 let sourceUrl = null, sourceName = 'motion-study', loaded = false, maskView = false, originalView = false, dirty = true, lastMediaTime = -1;
@@ -41,10 +43,15 @@ function syncControls() {
     if ($(key).type === 'checkbox') $(key).checked = value; else $(key).value = value;
     if (ranges[key] !== undefined) $(`${key}Value`).textContent = `${value}${ranges[key]}`;
   }
-  syncSwatches(); updateHint();
+  syncSwatches(); syncColorControls(); updateHint();
   $('processingSize').textContent = `${settings.quality} PX ANALYSIS`;
 }
 function syncSwatches() { document.querySelectorAll('[data-color]').forEach(b=>{const active = b.dataset.color === settings.color.toLowerCase();b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);}); }
+function syncColorControls() {
+  $('sharedColorControls').hidden=settings.separateColors;
+  $('separateColorControls').hidden=!settings.separateColors;
+  for(const key of overlayColorKeys){$(`${key}Hex`).value=settings[key].toUpperCase();$(`${key}Hex`).removeAttribute('aria-invalid');}
+}
 function updateHint() {
   $('modeHint').textContent = {bright:'Best for light subjects on a dark background.',dark:'Best for dark subjects on a light background.',motion:'Best with a fixed camera. Lower threshold detects subtler movement.'}[settings.detectionMode];
 }
@@ -55,7 +62,7 @@ function setPreset(name) {
     technical:{boxes:true,labels:true,centers:true,connections:true,trails:false,color:'#ffffff',lineWidth:1,sourceOpacity:80,grayscale:true},
     trails:{boxes:true,labels:true,centers:true,connections:false,trails:true,color:'#c5f56b',lineWidth:1.5,sourceOpacity:35,grayscale:true}
   };
-  Object.assign(settings,styles[name]);
+  Object.assign(settings,styles[name],{separateColors:false});
   clearPreset(); const b=document.querySelector(`[data-preset="${name}"]`);b.classList.add('active');b.setAttribute('aria-pressed','true');
   syncControls(); dirty=true;
 }
@@ -68,10 +75,21 @@ for (const key of Object.keys(defaults)) $(key).addEventListener('input', () => 
   if (key==='quality') $('processingSize').textContent=`${settings.quality} PX ANALYSIS`;
   if (key==='exportSize') resizeOutput();
   if (key==='color') syncSwatches();
+  if (key==='separateColors' || overlayColorKeys.includes(key)) syncColorControls();
   clearPreset(); dirty=true;
 });
 document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>setPreset(b.dataset.preset)));
 document.querySelectorAll('[data-color]').forEach(b=>b.addEventListener('click',()=>{settings.color=b.dataset.color;$('color').value=settings.color;syncSwatches();clearPreset();dirty=true;}));
+for(const key of overlayColorKeys) {
+  const input=$(`${key}Hex`);
+  input.addEventListener('input',()=>{
+    if(exporting)return;
+    const value=input.value.trim();
+    if(!/^#[0-9a-f]{6}$/i.test(value)){input.setAttribute('aria-invalid','true');return;}
+    input.removeAttribute('aria-invalid');settings[key]=value.toLowerCase();$(key).value=settings[key];clearPreset();dirty=true;
+  });
+  input.addEventListener('blur',()=>{if(/^#[0-9a-f]{6}$/i.test(input.value.trim()))input.value=settings[key].toUpperCase();});
+}
 $('resetButton').addEventListener('click',()=>{settings={...defaults};syncControls();setPreset('classic');resizeOutput();resetTracker();notice('Controls reset.');});
 $('resetTracking').addEventListener('click',()=>{resetTracker();notice('Tracking reset. The current frame is the new motion background.');});
 
@@ -94,22 +112,25 @@ function drawDemo(time) {
   }
 }
 function drawOverlay() {
-  const w=canvas.width,h=canvas.height,scale=Math.max(.7,Math.min(w,h)/720),color=settings.color;
-  ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=settings.lineWidth*scale;
+  const w=canvas.width,h=canvas.height,scale=Math.max(.7,Math.min(w,h)/720);
+  const boxColor=settings.separateColors?settings.boxColor:settings.color;
+  const connectionColor=settings.separateColors?settings.connectionColor:settings.color;
+  const pointColor=settings.separateColors?settings.pointColor:settings.color;
+  ctx.save();ctx.lineWidth=settings.lineWidth*scale;
   if(settings.connections) {
-    ctx.globalAlpha=.48;ctx.beginPath();
+    ctx.strokeStyle=connectionColor;ctx.globalAlpha=.48;ctx.beginPath();
     for(const [a,b] of connectionEdges(tracks)){ctx.moveTo(tracks[a].cx*w,tracks[a].cy*h);ctx.lineTo(tracks[b].cx*w,tracks[b].cy*h);}ctx.stroke();ctx.globalAlpha=1;
   }
   for(const t of tracks) {
     const x=t.x*w,y=t.y*h,bw=t.w*w,bh=t.h*h,cx=t.cx*w,cy=t.cy*h;
-    if(settings.trails && t.history.length>1){for(let i=1;i<t.history.length;i++){ctx.globalAlpha=(i/t.history.length)*.65;ctx.beginPath();ctx.moveTo(t.history[i-1][0]*w,t.history[i-1][1]*h);ctx.lineTo(t.history[i][0]*w,t.history[i][1]*h);ctx.stroke();}ctx.globalAlpha=1;}
-    if(settings.boxes){ctx.globalAlpha=.85;ctx.strokeRect(x,y,bw,bh);ctx.globalAlpha=1;const c=Math.min(8*scale,bw*.2,bh*.2);ctx.lineWidth=(settings.lineWidth+.5)*scale;ctx.beginPath();ctx.moveTo(x,y+c);ctx.lineTo(x,y);ctx.lineTo(x+c,y);ctx.moveTo(x+bw-c,y+bh);ctx.lineTo(x+bw,y+bh);ctx.lineTo(x+bw,y+bh-c);ctx.stroke();ctx.lineWidth=settings.lineWidth*scale;}
-    if(settings.centers){const r=5*scale;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,1.7*scale,0,Math.PI*2);ctx.fill();}
+    if(settings.trails && t.history.length>1){ctx.strokeStyle=pointColor;for(let i=1;i<t.history.length;i++){ctx.globalAlpha=(i/t.history.length)*.65;ctx.beginPath();ctx.moveTo(t.history[i-1][0]*w,t.history[i-1][1]*h);ctx.lineTo(t.history[i][0]*w,t.history[i][1]*h);ctx.stroke();}ctx.globalAlpha=1;}
+    if(settings.boxes){ctx.strokeStyle=boxColor;ctx.globalAlpha=.85;ctx.strokeRect(x,y,bw,bh);ctx.globalAlpha=1;const c=Math.min(8*scale,bw*.2,bh*.2);ctx.lineWidth=(settings.lineWidth+.5)*scale;ctx.beginPath();ctx.moveTo(x,y+c);ctx.lineTo(x,y);ctx.lineTo(x+c,y);ctx.moveTo(x+bw-c,y+bh);ctx.lineTo(x+bw,y+bh);ctx.lineTo(x+bw,y+bh-c);ctx.stroke();ctx.lineWidth=settings.lineWidth*scale;}
+    if(settings.centers){ctx.strokeStyle=pointColor;ctx.fillStyle=pointColor;const r=5*scale;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,1.7*scale,0,Math.PI*2);ctx.fill();}
     if(settings.labels) {
       const text=`ID ${String(t.id).padStart(3,'0')}`,fontSize=11*scale;
       ctx.font=`${fontSize}px "Cascadia Code",Consolas,monospace`;
       const tw=ctx.measureText(text).width+8*scale,lx=Math.max(2,Math.min(x,w-tw-2)),ly=Math.max(fontSize+7*scale,y-5*scale);
-      ctx.fillStyle='#091006';ctx.globalAlpha=.85;ctx.fillRect(lx,ly-fontSize-4*scale,tw,fontSize+7*scale);ctx.globalAlpha=1;ctx.fillStyle=color;ctx.fillText(text,lx+4*scale,ly);
+      ctx.fillStyle='#091006';ctx.globalAlpha=.85;ctx.fillRect(lx,ly-fontSize-4*scale,tw,fontSize+7*scale);ctx.globalAlpha=1;ctx.fillStyle=pointColor;ctx.fillText(text,lx+4*scale,ly);
     }
   }
   ctx.restore();
@@ -252,7 +273,7 @@ video.addEventListener('error',()=>{if(exporting){cancelled=true;cancellationRea
 video.addEventListener('timeupdate',()=>{if(!exporting&&video.loop&&video.currentTime<lastMediaTime-.2)resetTracker();});
 
 function saveBlob(blob,name) { const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000); }
-$('snapshotButton').addEventListener('click',()=>canvas.toBlob(blob=>{if(blob){saveBlob(blob,`${sourceName}-blob-tracker.png`);notice('Frame saved as PNG.');}},'image/png'));
+$('snapshotButton').addEventListener('click',()=>canvas.toBlob(blob=>{if(blob){saveBlob(blob,`${sourceName}-tracefield.png`);notice('Frame saved as PNG.');}},'image/png'));
 function hideDownload(){if(downloadUrl){URL.revokeObjectURL(downloadUrl);downloadUrl=null;}$('downloadPanel').hidden=true;}
 function setExportUi(active) {
   exporting=active;document.body.classList.toggle('exporting',active);$('exportPanel').hidden=!active;
@@ -290,7 +311,7 @@ async function startExport() {
       const actualType=recorder.mimeType, blob=new Blob(chunks,{type:actualType});
       recordingStream?.getTracks().forEach(t=>t.stop());recordingStream=null;recorder=null;
       setExportUi(false);restorePlayback();
-      if(!cancelled&&blob.size){const ext=actualType.includes('mp4')?'mp4':'webm';downloadUrl=URL.createObjectURL(blob);$('downloadLink').href=downloadUrl;$('downloadLink').download=`${sourceName}-blob-tracker.${ext}`;$('downloadDetail').textContent=`${ext.toUpperCase()} · ${(blob.size/1024/1024).toFixed(1)} MB · ${canvas.width} × ${canvas.height}`;$('downloadPanel').hidden=false;notice('Export complete. Your download is ready.');}else if(cancelled)notice(cancellationReason||'Export cancelled.',Boolean(cancellationReason));
+      if(!cancelled&&blob.size){const ext=actualType.includes('mp4')?'mp4':'webm';downloadUrl=URL.createObjectURL(blob);$('downloadLink').href=downloadUrl;$('downloadLink').download=`${sourceName}-tracefield.${ext}`;$('downloadDetail').textContent=`${ext.toUpperCase()} · ${(blob.size/1024/1024).toFixed(1)} MB · ${canvas.width} × ${canvas.height}`;$('downloadPanel').hidden=false;notice('Export complete. Your download is ready.');}else if(cancelled)notice(cancellationReason||'Export cancelled.',Boolean(cancellationReason));
     },{once:true});
     recorder.start(1000);
     if(demo){demoTime=0;playing=true;demoLast=performance.now();}else await video.play();
