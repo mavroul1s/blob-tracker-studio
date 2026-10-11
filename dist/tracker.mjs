@@ -45,7 +45,7 @@ export class BlobTracker {
     }
     this.work.set(mask); // Preserve the mask for preview while visiting components.
     const visited = this.work, blobs = [], queue = this.queue;
-    const minArea = options.minArea * (width / 384) ** 2;
+    const minArea = options.minArea * (Math.max(width,height) / 384) ** 2;
     for (let seed = 0; seed < size; seed++) {
       if (!visited[seed]) continue;
       let start = 0, end = 1, area = 0, sx = 0, sy = 0;
@@ -106,6 +106,36 @@ export class BlobTracker {
     this.tracks = this.tracks.filter(track => track.missed < 9);
     return this.tracks.filter(track => track.missed === 0).sort((a,b) => a.id - b.id);
   }
+}
+
+// Pick a threshold from this frame rather than assuming all clips have demo contrast.
+export function tuneDetection(rgba,width,height,minArea=80,maxBlobs=20) {
+  const histogram = new Uint32Array(256),size=width*height;
+  let sum=0;
+  for(let p=0;p<rgba.length;p+=4){const l=Math.round(rgba[p]*.2126+rgba[p+1]*.7152+rgba[p+2]*.0722);histogram[l]++;sum+=l;}
+  let lowSum=0,lowCount=0,bestVariance=-1,otsu=150;
+  for(let l=0;l<255;l++){
+    lowCount+=histogram[l];lowSum+=histogram[l]*l;
+    const highCount=size-lowCount;if(!lowCount||!highCount)continue;
+    const variance=lowCount*highCount*(lowSum/lowCount-(sum-lowSum)/highCount)**2;
+    if(variance>bestVariance){bestVariance=variance;otsu=l;}
+  }
+  const quantile=q=>{let n=0;for(let l=0;l<256;l++){n+=histogram[l];if(n>=size*q)return l;}return 255;};
+  let best={mode:'bright',threshold:150,count:0,score:-Infinity};
+  if(quantile(.99)-quantile(.01)<3 && bestVariance<=0)return best;
+  for(const mode of ['bright','dark']) {
+    const candidates=mode==='bright'?[otsu+1,quantile(.7),quantile(.88)]:[otsu+1,quantile(.3),quantile(.12)];
+    for(const candidate of new Set(candidates)) {
+      const threshold=Math.max(5,Math.min(250,candidate));
+      const detector=new BlobTracker();
+      const blobs=detector.detect(rgba,width,height,{mode,threshold,minArea,maxBlobs,advance:false});
+      const useful=blobs.filter(b=>b.area<.45 && b.w*b.h<.75);
+      const coverage=useful.reduce((n,b)=>n+b.area,0);
+      const score=useful.length?Math.min(useful.length,12)*2+Math.min(coverage,.3)*10-(blobs.length-useful.length)*3:-Infinity;
+      if(score>best.score)best={mode,threshold,count:useful.length,score};
+    }
+  }
+  return best;
 }
 
 export function connectionEdges(tracks) {
