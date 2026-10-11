@@ -11,13 +11,11 @@
 </head>
 <body>
   <header class="header">
-    <a class="brand" href="./" aria-label="Blob Tracker home"><span class="brand-mark" aria-hidden="true"></span><span>BLOB<span class="brand-light">TRACKER</span><span class="version"> / 01</span></span></a>
-    <span class="header-note"><span class="status-dot"></span> LOCAL PROCESSING</span>
-    <button id="helpButton" class="button quiet">How it works <span aria-hidden="true">↗</span></button>
+    <a class="brand" href="./" aria-label="Blob Tracker home"><span class="brand-mark" aria-hidden="true"></span><span>BLOB<span class="brand-light">TRACKER</span></span></a>
+    <button id="helpButton" class="button quiet">Help</button>
   </header>
   <main>
     <div class="intro">
-      <div><p class="eyebrow">VIDEO → MOTION → DATA</p><h1>Motion, mapped.</h1><p class="intro-copy">Your footage. A new layer of information.</p></div>
       <div class="actions"><button id="uploadButton" class="button secondary"><span aria-hidden="true">＋</span> Upload video</button><button id="exportButton" class="button primary"><span aria-hidden="true">↓</span> Export video</button></div>
     </div>
     <input type="file" id="fileInput" accept="video/*,.mp4,.mov,.webm,.m4v,.ogv" hidden>
@@ -27,14 +25,14 @@
         <div id="dropZone" class="stage" tabindex="0" aria-label="Video canvas. Drag a video here to load it.">
           <canvas id="outputCanvas" width="1280" height="720" aria-label="Live blob tracking video preview"></canvas>
           <div class="canvas-top"><span id="resolution">1280 × 720</span><span id="liveStatus"><span class="status-dot"></span> LIVE PREVIEW</span></div>
-          <div class="canvas-bottom"><span>BT / MOTION STUDY <span id="frameNumber">00000</span></span><span id="canvasBlobCount">06 OBJECTS</span></div>
-          <div class="drop-message"><span>Drop your video here</span><small>Release to replace the current clip</small></div>
+          <div class="canvas-bottom" hidden><span id="frameNumber">00000</span><span id="canvasBlobCount">06 OBJECTS</span></div>
+          <div class="drop-message"><span>Drop video</span></div>
         </div>
         <div class="transport"><button id="playButton" class="icon-button" aria-label="Pause" title="Play / pause (space)">Ⅱ</button><button id="restartButton" class="icon-button" aria-label="Restart" title="Restart">↺</button><span id="timeDisplay" class="time">00:00 / 00:12</span><input id="scrubber" type="range" min="0" max="12" step="0.01" value="0" aria-label="Video position"><button id="muteButton" class="button quiet compact" disabled>Sound off</button><button id="fullscreenButton" class="icon-button" title="Fullscreen" aria-label="Fullscreen">⛶</button></div>
-        <div id="importPanel" class="export-panel" hidden><div><strong id="importTitle">Opening your video…</strong><span>No video is sent to an external server.</span></div><progress id="importProgress" max="100"></progress><button id="cancelImport" class="button secondary compact">Cancel</button></div>
-        <div class="stats"><span><span class="status-dot"></span><strong id="blobCount">6</strong> blobs detected</span><span><strong id="fps">30</strong> FPS</span><span id="processingSize">384 PX ANALYSIS</span><span class="privacy">Your video stays on your device.</span></div>
-        <div class="clip-strip"><div class="clip-icon" aria-hidden="true">01</div><div class="clip-info"><strong id="clipTitle">Start with your own footage</strong><span id="clipSubtitle">Drop a video onto the preview, or use Upload video.</span></div><button id="demoButton" class="button quiet compact">Load demo ↗</button><button id="snapshotButton" class="button secondary compact">Save frame ↓</button></div>
-        <div id="exportPanel" class="export-panel" hidden><div><strong id="exportTitle">Rendering your video…</strong><span id="exportDetail">Keep this tab visible. Export runs at playback speed.</span></div><progress id="exportProgress" value="0" max="100"></progress><button id="cancelExport" class="button secondary compact">Cancel</button></div>
+        <div id="importPanel" class="export-panel" hidden><div><strong id="importTitle">Opening your video…</strong></div><progress id="importProgress" max="100"></progress><button id="cancelImport" class="button secondary compact">Cancel</button></div>
+        <div class="stats"><span><span class="status-dot"></span><strong id="blobCount">6</strong> blobs detected</span><span><strong id="fps">30</strong> FPS</span><span id="processingSize">384 PX ANALYSIS</span></div>
+        <div class="clip-strip"><div class="clip-info" hidden><strong id="clipTitle"></strong><span id="clipSubtitle"></span></div><button id="demoButton" class="button quiet compact">Load demo ↗</button><button id="snapshotButton" class="button secondary compact">Save frame ↓</button></div>
+        <div id="exportPanel" class="export-panel" hidden><div><strong id="exportTitle">Rendering your video…</strong><span id="exportDetail">Keep this tab visible.</span></div><progress id="exportProgress" value="0" max="100"></progress><button id="cancelExport" class="button secondary compact">Cancel</button></div>
         <div id="downloadPanel" class="download-panel" hidden><div><strong>Your video is ready.</strong><span id="downloadDetail"></span></div><a id="downloadLink" class="button primary compact" download>Download video ↓</a></div>
         <p id="notice" class="notice" role="status" aria-live="polite"></p>
       </section>
@@ -43,7 +41,7 @@
         <div class="preset-row" aria-label="Effect presets"><button class="preset active" data-preset="classic" aria-pressed="true">Classic</button><button class="preset" data-preset="technical" aria-pressed="false">Technical</button><button class="preset" data-preset="trails" aria-pressed="false">Trails</button></div>
         <section class="control-section"><h3><span>01</span> Detection</h3>
           <label class="field-label" for="detectionMode">Track</label><select id="detectionMode"><option value="bright">Bright areas</option><option value="dark">Dark areas</option><option value="motion">Moving areas</option></select>
-          <p id="modeHint" class="hint">Best for light subjects on a dark background.</p>
+          <p id="modeHint" hidden></p>
           <button id="autoTune" class="button secondary compact full">Auto tune detection ↗</button>
           <label class="range-label" for="threshold">Threshold <output id="thresholdValue">150</output></label><input id="threshold" type="range" min="5" max="250" value="150">
           <label class="range-label" for="minArea">Minimum blob size <output id="minAreaValue">80 px</output></label><input id="minArea" type="range" min="10" max="2000" step="10" value="80">
@@ -62,11 +60,9 @@
           <label class="range-label" for="sourceOpacity">Video visibility <output id="sourceOpacityValue">100%</output></label><input id="sourceOpacity" type="range" min="0" max="100" value="100">
           <label class="toggle-row">Black & white video<input id="grayscale" type="checkbox"><span class="switch" aria-hidden="true"></span></label>
         </section>
-        <section class="control-section"><h3><span>03</span> Output</h3><label class="field-label" for="quality">Detection detail</label><select id="quality"><option value="256">Fast · 256 px</option><option value="384" selected>Balanced · 384 px</option><option value="640">Fine · 640 px</option></select><label class="field-label" for="exportSize">Export resolution</label><select id="exportSize"><option value="720">720p · faster</option><option value="1080" selected>1080p</option><option value="source">Original · up to 4K</option></select><label class="toggle-row">Include original audio<input id="includeAudio" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label><p class="hint">MP4 when supported; otherwise WebM. Export takes the length of your clip.</p></section>
-        <div class="settings-footer"><span class="brand-mark small" aria-hidden="true"></span><span>Made for experiments.<br>Ready for your next edit.</span></div>
+        <section class="control-section"><h3><span>03</span> Output</h3><label class="field-label" for="quality">Detection detail</label><select id="quality"><option value="256">Fast · 256 px</option><option value="384" selected>Balanced · 384 px</option><option value="640">Fine · 640 px</option></select><label class="field-label" for="exportSize">Export resolution</label><select id="exportSize"><option value="720">720p · faster</option><option value="1080" selected>1080p</option><option value="source">Original · up to 4K</option></select><label class="toggle-row">Include original audio<input id="includeAudio" type="checkbox" checked><span class="switch" aria-hidden="true"></span></label></section>
       </aside>
     </div>
-    <footer class="footer"><span>BLOB TRACKER STUDIO</span><span>UPLOAD. TUNE. EXPORT.</span><span>NO UPLOADS. NO WAITING ROOM.</span></footer>
   </main>
   <video id="sourceVideo" class="source-video" playsinline preload="auto" muted aria-hidden="true" tabindex="-1"></video>
   <dialog id="helpDialog"><div class="dialog-heading"><h2>A quick field guide.</h2><button id="closeHelp" class="icon-button" aria-label="Close help">×</button></div><ol><li><strong>Load a clip.</strong> Drop your video onto the canvas. MP4 and WebM work well; other formats depend on your browser.</li><li><strong>Find your subjects.</strong> Bright areas works for light subjects; Dark areas for dark subjects. Moving areas compares against a slowly adapting background and works best with a fixed camera.</li><li><strong>Tune the threshold.</strong> Use Detection mask to see exactly what is detected. Raise Minimum blob size to remove noise.</li><li><strong>Make it yours.</strong> Change boxes, labels, links, trails and video visibility. IDs follow nearby blobs; they can change when objects merge or overlap.</li><li><strong>Export.</strong> Render from the beginning at playback speed. Keep the tab visible. Download the finished video, or save a single frame.</li></ol><p>Your video is read locally. Nothing is sent to a server.</p><button id="helpDone" class="button primary full">Got it</button></dialog>
