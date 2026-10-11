@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { BlobTracker,connectionEdges } from './dist/tracker.mjs';
+const options = {mode:'bright',threshold:150,minArea:1,maxBlobs:20,advance:true,close:false};
+function image(w,h,rects,bg=0) { const data=new Uint8ClampedArray(w*h*4);for(let i=0;i<w*h;i++){data[i*4]=data[i*4+1]=data[i*4+2]=bg;data[i*4+3]=255;}for(const [x,y,rw,rh,value=255] of rects)for(let iy=y;iy<y+rh;iy++)for(let ix=x;ix<x+rw;ix++){const p=(iy*w+ix)*4;data[p]=data[p+1]=data[p+2]=value;}return data; }
+test('detects two separate bright subjects with correct normalized centers',()=>{const t=new BlobTracker();const b=t.detect(image(100,100,[[10,20,10,10],[60,70,20,10]]),100,100,options);assert.equal(b.length,2);assert.equal(b[0].cx,.695);assert.equal(b[1].cy,.245);});
+test('dark detection and minimum area reject background and tiny noise',()=>{const t=new BlobTracker();const b=t.detect(image(100,100,[[10,10,10,10,0],[80,80,1,1,0]],255),100,100,{...options,mode:'dark',minArea:100});assert.equal(b.length,1);assert.equal(b[0].cx,.145);});
+test('IDs persist when subjects change size order and position',()=>{const t=new BlobTracker();let b=t.detect(image(100,100,[[10,20,10,10],[60,70,20,10]]),100,100,options);let tracks=t.update(b,0);const id=tracks.find(v=>v.cx<.5).id;b=t.detect(image(100,100,[[12,20,15,15],[62,70,10,10]]),100,100,options);tracks=t.update(b,0);assert.equal(tracks.find(v=>v.cx<.5).id,id);assert.equal(new Set(tracks.map(v=>v.id)).size,2);});
+test('motion compares against initialized background',()=>{const t=new BlobTracker();const opts={...options,mode:'motion',threshold:20};assert.equal(t.detect(image(100,100,[]),100,100,opts).length,0);assert.equal(t.detect(image(100,100,[[20,20,10,10]]),100,100,opts).length,1);});
+test('network connections have no duplicates or self links',()=>{const edges=connectionEdges([{cx:.1,cy:.2},{cx:.3,cy:.2},{cx:.5,cy:.2}]);assert.equal(edges.length,3);assert.ok(edges.every(([a,b])=>a!==b));assert.equal(new Set(edges.map(([a,b])=>[a,b].sort().join('-'))).size,3);});

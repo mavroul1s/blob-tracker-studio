@@ -1,0 +1,267 @@
+import { BlobTracker, connectionEdges } from './tracker.mjs';
+
+const $ = id => document.getElementById(id);
+const canvas = $('outputCanvas'), ctx = canvas.getContext('2d');
+const video = $('sourceVideo');
+const sourceCanvas = document.createElement('canvas'), sourceCtx = sourceCanvas.getContext('2d');
+const analysis = document.createElement('canvas'), analysisCtx = analysis.getContext('2d', { willReadFrequently: true });
+const maskCanvas = document.createElement('canvas'), maskCtx = maskCanvas.getContext('2d');
+const tracker = new BlobTracker();
+const defaults = { detectionMode:'bright', threshold:150, minArea:80, maxBlobs:20, smoothing:35, boxes:true, labels:true,
+  centers:true, connections:true, trails:false, color:'#c5f56b', lineWidth:1.5, sourceOpacity:65, grayscale:true, quality:384, exportSize:'1080', includeAudio:true };
+const ranges = { threshold:'', minArea:' px', maxBlobs:'', smoothing:'%', lineWidth:' px', sourceOpacity:'%' };
+let settings = { ...defaults }, demo = true, playing = true, demoTime = 0, demoLast = performance.now();
+let sourceUrl = null, sourceName = 'motion-study', loaded = false, maskView = false, dirty = true, lastMediaTime = -1;
+let frame = 0, tracks = [], muted = true, fps = 30, framesSinceStats = 0, lastStats = performance.now();
+let recorder = null, recordingStream = null, exporting = false, cancelled = false, downloadUrl = null;
+let audioContext = null, audioSource = null, audioDestination = null, previewGain = null, pendingLoad = false;
+let exportPrevious = null, cancellationReason = '';
+
+function notice(message, error = false) { $('notice').textContent = message; $('notice').classList.toggle('error', error); }
+function formatTime(t) { if (!Number.isFinite(t)) t = 0; return `${String(Math.floor(t/60)).padStart(2,'0')}:${String(Math.floor(t%60)).padStart(2,'0')}`; }
+function duration() { return demo ? 12 : (Number.isFinite(video.duration) ? video.duration : 0); }
+function mediaTime() { return demo ? demoTime : video.currentTime; }
+function dimensions() { return demo ? [1280,720] : [video.videoWidth || 1280,video.videoHeight || 720]; }
+function resizeOutput() {
+  const [w,h] = dimensions();
+  const target = settings.exportSize === 'source' ? 2160 : Number(settings.exportSize);
+  const scale = Math.min(1,target / Math.min(w,h),3840/Math.max(w,h));
+  canvas.width = Math.max(2,Math.round(w*scale/2)*2); canvas.height = Math.max(2,Math.round(h*scale/2)*2);
+  sourceCanvas.width = demo ? w : 1; sourceCanvas.height = demo ? h : 1;
+  $('resolution').textContent = `${canvas.width} × ${canvas.height}`;
+  $('dropZone').style.aspectRatio = `${w}/${h}`;
+  dirty = true;
+}
+function resetTracker() { tracker.reset(); tracks = []; lastMediaTime = -1; dirty = true; frame = 0; }
+function syncControls() {
+  for (const [key,value] of Object.entries(settings)) {
+    if ($(key).type === 'checkbox') $(key).checked = value; else $(key).value = value;
+    if (ranges[key] !== undefined) $(`${key}Value`).textContent = `${value}${ranges[key]}`;
+  }
+  syncSwatches(); updateHint();
+  $('processingSize').textContent = `${settings.quality} PX ANALYSIS`;
+}
+function syncSwatches() { document.querySelectorAll('[data-color]').forEach(b=>{const active = b.dataset.color === settings.color.toLowerCase();b.classList.toggle('active',active);b.setAttribute('aria-pressed',active);}); }
+function updateHint() {
+  $('modeHint').textContent = {bright:'Best for light subjects on a dark background.',dark:'Best for dark subjects on a light background.',motion:'Best with a fixed camera. Lower threshold detects subtler movement.'}[settings.detectionMode];
+}
+function clearPreset() { document.querySelectorAll('[data-preset]').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-pressed','false');}); }
+function setPreset(name) {
+  const styles = {
+    classic:{boxes:true,labels:true,centers:true,connections:true,trails:false,color:'#c5f56b',lineWidth:1.5,sourceOpacity:65,grayscale:true},
+    technical:{boxes:true,labels:true,centers:true,connections:true,trails:false,color:'#ffffff',lineWidth:1,sourceOpacity:80,grayscale:true},
+    trails:{boxes:true,labels:true,centers:true,connections:false,trails:true,color:'#c5f56b',lineWidth:1.5,sourceOpacity:35,grayscale:true}
+  };
+  Object.assign(settings,styles[name]);
+  clearPreset(); const b=document.querySelector(`[data-preset="${name}"]`);b.classList.add('active');b.setAttribute('aria-pressed','true');
+  syncControls(); dirty=true;
+}
+for (const key of Object.keys(defaults)) $(key).addEventListener('input', () => {
+  if (exporting) return;
+  const el=$(key); settings[key] = el.type==='checkbox' ? el.checked : (typeof defaults[key]==='number' ? Number(el.value) : el.value);
+  if (ranges[key]!==undefined) $(`${key}Value`).textContent = `${settings[key]}${ranges[key]}`;
+  if (['detectionMode','quality','threshold','minArea','maxBlobs'].includes(key)) resetTracker();
+  if (key==='detectionMode') { settings.threshold = settings.detectionMode==='motion' ? 25 : 150; syncControls(); }
+  if (key==='quality') $('processingSize').textContent=`${settings.quality} PX ANALYSIS`;
+  if (key==='exportSize') resizeOutput();
+  if (key==='color') syncSwatches();
+  clearPreset(); dirty=true;
+});
+document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>setPreset(b.dataset.preset)));
+document.querySelectorAll('[data-color]').forEach(b=>b.addEventListener('click',()=>{settings.color=b.dataset.color;$('color').value=settings.color;syncSwatches();clearPreset();dirty=true;}));
+$('resetButton').addEventListener('click',()=>{settings={...defaults};syncControls();setPreset('classic');resizeOutput();resetTracker();notice('Controls reset.');});
+$('resetTracking').addEventListener('click',()=>{resetTracker();notice('Tracking reset. The current frame is the new motion background.');});
+
+function drawDemo(time) {
+  const w=sourceCanvas.width,h=sourceCanvas.height;
+  sourceCtx.fillStyle='#0e1412'; sourceCtx.fillRect(0,0,w,h);
+  sourceCtx.strokeStyle='#1a241e'; sourceCtx.lineWidth=1;
+  for(let x=0;x<w;x+=64){sourceCtx.beginPath();sourceCtx.moveTo(x,0);sourceCtx.lineTo(x,h);sourceCtx.stroke();}
+  for(let y=0;y<h;y+=64){sourceCtx.beginPath();sourceCtx.moveTo(0,y);sourceCtx.lineTo(w,y);sourceCtx.stroke();}
+  for(let i=0;i<6;i++) {
+    const phase=i*1.13, cx=w*(0.18+(i%3)*0.30+Math.sin(time*0.55+phase)*0.065);
+    const cy=h*(0.30+Math.floor(i/3)*0.38+Math.cos(time*0.75+phase)*0.08);
+    const rx=w*(0.044+Math.sin(time*0.7+i)*0.012),ry=h*(0.065+Math.cos(time*0.6+i)*0.018);
+    sourceCtx.save();sourceCtx.translate(cx,cy);sourceCtx.rotate(Math.sin(time*.35+phase)*.35);
+    const g=sourceCtx.createRadialGradient(-rx*.2,-ry*.3,0,0,0,Math.max(rx,ry)*1.6);
+    g.addColorStop(0,'#e2e7d6');g.addColorStop(.65,'#afbca0');g.addColorStop(1,'#718865');
+    sourceCtx.fillStyle=g;sourceCtx.beginPath();
+    for(let a=0;a<=Math.PI*2+.1;a+=.06){const wobble=1+Math.sin(a*3+time*.4+phase)*.12+Math.cos(a*5-time*.3)*.04;const x=Math.cos(a)*rx*wobble,y=Math.sin(a)*ry*wobble;a===0?sourceCtx.moveTo(x,y):sourceCtx.lineTo(x,y);}
+    sourceCtx.closePath();sourceCtx.fill();sourceCtx.restore();
+  }
+}
+function drawOverlay() {
+  const w=canvas.width,h=canvas.height,scale=Math.max(.7,Math.min(w,h)/720),color=settings.color;
+  ctx.save();ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=settings.lineWidth*scale;
+  if(settings.connections) {
+    ctx.globalAlpha=.48;ctx.beginPath();
+    for(const [a,b] of connectionEdges(tracks)){ctx.moveTo(tracks[a].cx*w,tracks[a].cy*h);ctx.lineTo(tracks[b].cx*w,tracks[b].cy*h);}ctx.stroke();ctx.globalAlpha=1;
+  }
+  for(const t of tracks) {
+    const x=t.x*w,y=t.y*h,bw=t.w*w,bh=t.h*h,cx=t.cx*w,cy=t.cy*h;
+    if(settings.trails && t.history.length>1){for(let i=1;i<t.history.length;i++){ctx.globalAlpha=(i/t.history.length)*.65;ctx.beginPath();ctx.moveTo(t.history[i-1][0]*w,t.history[i-1][1]*h);ctx.lineTo(t.history[i][0]*w,t.history[i][1]*h);ctx.stroke();}ctx.globalAlpha=1;}
+    if(settings.boxes){ctx.globalAlpha=.85;ctx.strokeRect(x,y,bw,bh);ctx.globalAlpha=1;const c=Math.min(8*scale,bw*.2,bh*.2);ctx.lineWidth=(settings.lineWidth+.5)*scale;ctx.beginPath();ctx.moveTo(x,y+c);ctx.lineTo(x,y);ctx.lineTo(x+c,y);ctx.moveTo(x+bw-c,y+bh);ctx.lineTo(x+bw,y+bh);ctx.lineTo(x+bw,y+bh-c);ctx.stroke();ctx.lineWidth=settings.lineWidth*scale;}
+    if(settings.centers){const r=5*scale;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();ctx.beginPath();ctx.arc(cx,cy,1.7*scale,0,Math.PI*2);ctx.fill();}
+    if(settings.labels) {
+      const text=`ID ${String(t.id).padStart(3,'0')}`,fontSize=11*scale;
+      ctx.font=`${fontSize}px "Cascadia Code",Consolas,monospace`;
+      const tw=ctx.measureText(text).width+8*scale,lx=Math.max(2,Math.min(x,w-tw-2)),ly=Math.max(fontSize+7*scale,y-5*scale);
+      ctx.fillStyle='#091006';ctx.globalAlpha=.85;ctx.fillRect(lx,ly-fontSize-4*scale,tw,fontSize+7*scale);ctx.globalAlpha=1;ctx.fillStyle=color;ctx.fillText(text,lx+4*scale,ly);
+    }
+  }
+  ctx.restore();
+}
+function render(advance) {
+  if (!demo && (!loaded || video.readyState < 2)) return;
+  if(demo) drawDemo(demoTime);
+  const source = demo ? sourceCanvas : video;
+  const [w,h]=dimensions(),aw=Math.round(settings.quality),ah=Math.max(2,Math.round(aw*h/w));
+  // Portrait clips get the same pixel budget as landscape clips.
+  const finalW=w<h?Math.max(2,Math.round(settings.quality*w/h)):aw,finalH=w<h?aw:ah;
+  if(analysis.width!==finalW||analysis.height!==finalH){analysis.width=finalW;analysis.height=finalH;maskCanvas.width=finalW;maskCanvas.height=finalH;}
+  analysisCtx.drawImage(source,0,0,finalW,finalH);
+  const pixels=analysisCtx.getImageData(0,0,finalW,finalH);
+  const blobs=tracker.detect(pixels.data,finalW,finalH,{mode:settings.detectionMode,threshold:settings.threshold,minArea:settings.minArea,maxBlobs:settings.maxBlobs,advance});
+  tracks=tracker.update(blobs,settings.smoothing/100,advance);
+  ctx.fillStyle='#050806';ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(maskView){const maskImage=maskCtx.createImageData(finalW,finalH);for(let i=0;i<tracker.mask.length;i++){const v=tracker.mask[i]?230:7,p=i*4;maskImage.data[p]=v;maskImage.data[p+1]=v;maskImage.data[p+2]=v;maskImage.data[p+3]=255;}maskCtx.putImageData(maskImage,0,0);ctx.imageSmoothingEnabled=false;ctx.drawImage(maskCanvas,0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=true;}
+  else{ctx.save();ctx.filter=settings.grayscale?'grayscale(1)':'none';ctx.globalAlpha=settings.sourceOpacity/100;ctx.drawImage(source,0,0,canvas.width,canvas.height);ctx.restore();}
+  drawOverlay();
+  if(advance)frame++;
+  $('frameNumber').textContent=String(frame).padStart(5,'0');$('canvasBlobCount').textContent=`${String(tracks.length).padStart(2,'0')} OBJECTS`;
+  framesSinceStats++;
+}
+function updatePlaybackUi() {
+  const active=demo?playing:!video.paused;
+  $('playButton').textContent=active?'Ⅱ':'▶';$('playButton').setAttribute('aria-label',active?'Pause':'Play');
+  $('timeDisplay').textContent=`${formatTime(mediaTime())} / ${formatTime(duration())}`;
+  $('scrubber').max=duration();$('scrubber').value=mediaTime();
+  $('liveStatus').innerHTML=`<span class="status-dot"></span> ${exporting?'RENDERING':active?'LIVE PREVIEW':'PAUSED'}`;
+}
+function loop(now) {
+  const dt=Math.min((now-demoLast)/1000,.1);demoLast=now;
+  if(demo && playing){demoTime+=dt;if(demoTime>=12){if(exporting){demoTime=12;render(true);stopExport();}else{demoTime%=12;resetTracker();}}}
+  const t=mediaTime();
+  if((demo || loaded) && (dirty || t!==lastMediaTime)) {
+    const advance=t!==lastMediaTime;render(advance);lastMediaTime=t;dirty=false;
+  }
+  if(now-lastStats>450){fps=Math.round(framesSinceStats*1000/(now-lastStats));$('fps').textContent=(demo?playing:!video.paused)?Math.min(fps,60):'—';$('blobCount').textContent=tracks.length;lastStats=now;framesSinceStats=0;}
+  updatePlaybackUi();
+  if(exporting){const percentage=duration()?Math.min(100,t/duration()*100):0;$('exportProgress').value=percentage;$('exportTitle').textContent=`Rendering your video… ${Math.floor(percentage)}%`;}
+  requestAnimationFrame(loop);
+}
+async function togglePlay() {
+  if(exporting)return;
+  if(demo){playing=!playing;demoLast=performance.now();}
+  else if(loaded){if(video.paused){if(video.currentTime>=duration()-.05){video.currentTime=0;resetTracker();}try{await video.play();}catch{notice('Playback was blocked. Press Play again.',true);}}else video.pause();}
+}
+function seek(time) {
+  if(exporting)return;
+  resetTracker();
+  if(demo)demoTime=time;else if(loaded)video.currentTime=time;
+  dirty=true;
+}
+$('playButton').addEventListener('click',togglePlay);$('restartButton').addEventListener('click',()=>seek(0));
+$('scrubber').addEventListener('input',()=>seek(Number($('scrubber').value)));
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!['INPUT','SELECT','BUTTON','A'].includes(document.activeElement.tagName)&&!$('helpDialog').open){e.preventDefault();togglePlay();}});
+$('muteButton').addEventListener('click',async()=>{muted=!muted;if(audioContext){await audioContext.resume();previewGain.gain.value=muted?0:1;video.muted=false;}else video.muted=muted;$('muteButton').textContent=muted?'Sound off':'Sound on';});
+$('fullscreenButton').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('dropZone').requestFullscreen();}catch{notice('Fullscreen is unavailable in this browser.');}});
+function setView(mask){maskView=mask;$('effectView').classList.toggle('active',!mask);$('maskView').classList.toggle('active',mask);$('effectView').setAttribute('aria-pressed',!mask);$('maskView').setAttribute('aria-pressed',mask);dirty=true;}
+$('effectView').addEventListener('click',()=>{if(!exporting)setView(false);});$('maskView').addEventListener('click',()=>{if(!exporting)setView(true);});
+
+async function loadFile(file) {
+  if(!file || exporting || pendingLoad)return;
+  if(!file.type.startsWith('video/')&&!/\.(mp4|mov|webm|m4v|ogv|avi|mkv)$/i.test(file.name)){notice('Choose a video file, such as MP4 or WebM.',true);return;}
+  pendingLoad=true;notice('Opening your video…');
+  video.pause();playing=false;loaded=false;
+  if(sourceUrl)URL.revokeObjectURL(sourceUrl);
+  sourceUrl=URL.createObjectURL(file);video.src=sourceUrl;video.loop=true;video.playbackRate=1;
+  try {
+    await new Promise((resolve,reject)=>{const timer=setTimeout(()=>done(new Error('Opening the video timed out. Try an MP4 encoded with H.264.')),15000);const done=err=>{clearTimeout(timer);video.removeEventListener('loadeddata',ok);video.removeEventListener('error',bad);err?reject(err):resolve();};const ok=()=>done();const bad=()=>done(new Error('This browser cannot decode that video. Try an H.264 MP4 or WebM.'));video.addEventListener('loadeddata',ok,{once:true});video.addEventListener('error',bad,{once:true});video.load();});
+    if(!Number.isFinite(video.duration)||video.duration<=0)throw new Error('This video has no readable duration. Try another MP4 or WebM.');
+    demo=false;loaded=true;sourceName=file.name.replace(/\.[^.]+$/,'');
+    $('fileName').textContent=file.name;$('demoTag').hidden=true;$('clipTitle').textContent=file.name;
+    $('clipSubtitle').textContent=`${video.videoWidth} × ${video.videoHeight} · ${formatTime(video.duration)} · ${(file.size/1024/1024).toFixed(1)} MB`;
+    $('muteButton').disabled=false;resizeOutput();resetTracker();hideDownload();
+    video.muted=audioContext?false:muted;if(previewGain)previewGain.gain.value=muted?0:1;
+    try{await video.play();notice('Video loaded. Tune Threshold and Minimum blob size to find your subjects.');}catch{notice('Video loaded. Press Play to start.');}
+  } catch(e){notice(e.message,true);loadDemo(false);}finally{pendingLoad=false;$('fileInput').value='';}
+}
+$('uploadButton').addEventListener('click',()=>{if(!exporting)$('fileInput').click();});$('fileInput').addEventListener('change',e=>loadFile(e.target.files[0]));
+let dragDepth=0;
+document.addEventListener('dragover',e=>e.preventDefault());document.addEventListener('drop',e=>e.preventDefault());
+$('dropZone').addEventListener('dragenter',e=>{e.preventDefault();if(!exporting){dragDepth++;$('dropZone').classList.add('dragover');}});
+$('dropZone').addEventListener('dragleave',()=>{if(--dragDepth<=0){dragDepth=0;$('dropZone').classList.remove('dragover');}});
+$('dropZone').addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('dropZone').classList.remove('dragover');loadFile(e.dataTransfer.files[0]);});
+function loadDemo(showNotice=true) {
+  if(exporting)return;video.pause();if(sourceUrl){URL.revokeObjectURL(sourceUrl);sourceUrl=null;}video.removeAttribute('src');video.load();
+  demo=true;loaded=false;playing=true;demoTime=0;demoLast=performance.now();sourceName='motion-study';
+  $('fileName').textContent='Built-in motion study';$('demoTag').hidden=false;$('clipTitle').textContent='Start with your own footage';$('clipSubtitle').textContent='Drop a video onto the preview, or use Upload video.';$('muteButton').disabled=true;
+  resizeOutput();resetTracker();hideDownload();if(showNotice)notice('Demo loaded. Upload your own video whenever you’re ready.');
+}
+$('demoButton').addEventListener('click',()=>loadDemo());
+video.addEventListener('seeked',()=>{dirty=true;});video.addEventListener('ended',()=>{if(exporting){dirty=true;render(true);stopExport();}});
+video.addEventListener('error',()=>{if(exporting){cancelled=true;cancellationReason='The video could not be read during export.';stopExport();}});
+video.addEventListener('timeupdate',()=>{if(!exporting&&video.loop&&video.currentTime<lastMediaTime-.2)resetTracker();});
+
+function saveBlob(blob,name) { const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000); }
+$('snapshotButton').addEventListener('click',()=>canvas.toBlob(blob=>{if(blob){saveBlob(blob,`${sourceName}-blob-tracker.png`);notice('Frame saved as PNG.');}},'image/png'));
+function hideDownload(){if(downloadUrl){URL.revokeObjectURL(downloadUrl);downloadUrl=null;}$('downloadPanel').hidden=true;}
+function setExportUi(active) {
+  exporting=active;document.body.classList.toggle('exporting',active);$('exportPanel').hidden=!active;
+  for(const id of ['uploadButton','exportButton','demoButton','playButton','restartButton','scrubber','resetButton','snapshotButton','muteButton','effectView','maskView'])$(id).disabled=active||(id==='muteButton'&&demo);
+}
+function onceSeek(target) {
+  if(Math.abs(video.currentTime-target)<.001)return Promise.resolve();
+  return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{video.removeEventListener('seeked',done);reject(new Error('Could not seek to the start of the video.'));},7000);function done(){clearTimeout(timer);resolve();}video.addEventListener('seeked',done,{once:true});video.currentTime=target;});
+}
+async function prepareAudio() {
+  if(!audioContext){const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)throw new Error('Audio export is unavailable. Turn off Include original audio and try again.');audioContext=new Audio();audioSource=audioContext.createMediaElementSource(video);audioDestination=audioContext.createMediaStreamDestination();previewGain=audioContext.createGain();audioSource.connect(audioDestination);audioSource.connect(previewGain);previewGain.connect(audioContext.destination);}
+  await audioContext.resume();previewGain.gain.value=0;video.muted=false;
+  return audioDestination.stream.getAudioTracks();
+}
+async function startExport() {
+  if(exporting||pendingLoad)return;
+  if(!window.MediaRecorder||!canvas.captureStream){notice('Video export is unavailable in this browser. Open the app in Chrome or Edge, or use Save frame.',true);return;}
+  exportPrevious={time:mediaTime(),playing:demo?playing:!video.paused,mask:maskView};
+  cancelled=false;cancellationReason='';hideDownload();notice('');setExportUi(true);setView(false);$('exportProgress').value=0;
+  try {
+    if(demo){playing=false;demoTime=0;}else{video.pause();video.loop=false;video.playbackRate=1;await onceSeek(0);}
+    if(cancelled)throw new Error('Export cancelled.');
+    resetTracker();render(true);
+    recordingStream=canvas.captureStream(30);
+    if(!demo&&settings.includeAudio)for(const track of await prepareAudio())recordingStream.addTrack(track.clone());
+    if(cancelled)throw new Error('Export cancelled.');
+    const codecs=['video/mp4;codecs=avc1.42001E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+    const mimeType=codecs.find(type=>MediaRecorder.isTypeSupported(type));
+    if(!mimeType)throw new Error('This browser has no supported video encoder. Try Chrome or Edge.');
+    recorder=new MediaRecorder(recordingStream,{mimeType,videoBitsPerSecond:Math.max(4000000,canvas.width*canvas.height*5)});
+    const chunks=[];recorder.addEventListener('dataavailable',e=>{if(e.data.size)chunks.push(e.data);});
+    recorder.addEventListener('error',()=>{cancelled=true;cancellationReason='The browser encoder failed. Try 720p and export again.';stopExport();});
+    recorder.addEventListener('stop',()=>{
+      const actualType=recorder.mimeType, blob=new Blob(chunks,{type:actualType});
+      recordingStream?.getTracks().forEach(t=>t.stop());recordingStream=null;recorder=null;
+      setExportUi(false);restorePlayback();
+      if(!cancelled&&blob.size){const ext=actualType.includes('mp4')?'mp4':'webm';downloadUrl=URL.createObjectURL(blob);$('downloadLink').href=downloadUrl;$('downloadLink').download=`${sourceName}-blob-tracker.${ext}`;$('downloadDetail').textContent=`${ext.toUpperCase()} · ${(blob.size/1024/1024).toFixed(1)} MB · ${canvas.width} × ${canvas.height}`;$('downloadPanel').hidden=false;notice('Export complete. Your download is ready.');}else if(cancelled)notice(cancellationReason||'Export cancelled.',Boolean(cancellationReason));
+    },{once:true});
+    recorder.start(1000);
+    if(demo){demoTime=0;playing=true;demoLast=performance.now();}else await video.play();
+  } catch(e) {
+    if(!cancelled)cancellationReason=e.message||'Could not export the video. Try 720p.';
+    cancelled=true;
+    if(recorder&&recorder.state!=='inactive')recorder.stop();else{recordingStream?.getTracks().forEach(t=>t.stop());recordingStream=null;recorder=null;setExportUi(false);restorePlayback();}
+    notice(cancellationReason||'Export cancelled.',Boolean(cancellationReason));
+  }
+}
+function restorePlayback() {
+  if(previewGain)previewGain.gain.value=muted?0:1;
+  if(exportPrevious){setView(exportPrevious.mask);if(demo){demoTime=exportPrevious.time;playing=exportPrevious.playing;demoLast=performance.now();}else{video.loop=true;video.currentTime=exportPrevious.time;if(exportPrevious.playing)video.play().catch(()=>{});else video.pause();}}
+  resetTracker();dirty=true;
+}
+function stopExport() {if(!exporting)return;if(demo)playing=false;else video.pause();if(recorder&&recorder.state!=='inactive')recorder.stop();}
+$('exportButton').addEventListener('click',startExport);$('cancelExport').addEventListener('click',()=>{cancelled=true;stopExport();});
+document.addEventListener('visibilitychange',()=>{if(exporting&&document.hidden){cancelled=true;cancellationReason='Export stopped because the tab was hidden. Keep the app visible while rendering.';stopExport();}});
+$('helpButton').addEventListener('click',()=>$('helpDialog').showModal());$('closeHelp').addEventListener('click',()=>$('helpDialog').close());$('helpDone').addEventListener('click',()=>$('helpDialog').close());
+$('helpDialog').addEventListener('click',e=>{if(e.target===$('helpDialog')){const r=$('helpDialog').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('helpDialog').close();}});
+window.addEventListener('beforeunload',()=>{if(sourceUrl)URL.revokeObjectURL(sourceUrl);if(downloadUrl)URL.revokeObjectURL(downloadUrl);});
+syncControls();resizeOutput();requestAnimationFrame(loop);

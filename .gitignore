@@ -1,0 +1,5 @@
+.sites-state/
+node_modules/
+*.tar.gz
+.DS_Store
+test-artifacts/
